@@ -10,7 +10,8 @@ export enum ViewState {
   HELP = 'HELP',
   CREATORS = 'CREATORS',
   BACKSTAGE = 'BACKSTAGE',
-  ADMIN = 'ADMIN'
+  ADMIN = 'ADMIN',
+  USER_MANAGEMENT = 'USER_MANAGEMENT'
 }
 
 export enum UserTier {

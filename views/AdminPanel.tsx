@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { NFTItem } from '../types';
+import { NFTItem, ViewState } from '../types';
 
-const AdminPanel: React.FC<{ nfts: NFTItem[] }> = ({ nfts }) => {
+const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void }> = ({ nfts, setView }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'tournaments' | 'system'>('overview');
 
   return (
@@ -53,6 +53,25 @@ const AdminPanel: React.FC<{ nfts: NFTItem[] }> = ({ nfts }) => {
               </div>
             ))}
           </>
+        )}
+
+        {activeTab === 'users' && (
+          <div className="lg:col-span-4">
+            <button
+                onClick={() => setView(ViewState.USER_MANAGEMENT)}
+                className="w-full bg-vst/40 backdrop-blur-md p-10 rounded-[50px] border border-white/5 group hover:border-latitude-blue transition-all shadow-xl text-left"
+            >
+                <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter">User Hierarchy</h3>
+                <p className="text-gray-500 mt-4 font-mono uppercase text-xs leading-loose tracking-[0.2em]">
+                    Manage user roles, permissions, and the relationships between different user types.
+                </p>
+                <div className="mt-8">
+                    <span className="px-10 py-5 bg-latitude-blue text-white font-black uppercase tracking-[0.3em] text-[10px] rounded-2xl shadow-xl group-hover:bg-white group-hover:text-black transition-all">
+                        Manage Users
+                    </span>
+                </div>
+            </button>
+          </div>
         )}
 
         {activeTab === 'tournaments' && (

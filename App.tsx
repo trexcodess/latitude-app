@@ -11,6 +11,7 @@ import Pricing from './views/Pricing';
 import Help from './views/Help';
 import AdminPanel from './views/AdminPanel';
 import Backstage from './views/Backstage';
+import UserManagement from './views/UserManagement';
 import ThemeBackground from './components/ThemeBackground';
 import LegalModal from './components/LegalModal';
 import AIAssistant from './components/AIAssistant';
@@ -108,7 +109,7 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    const isProtected = [ViewState.CREATE, ViewState.ADMIN, ViewState.PROFILE, ViewState.BACKSTAGE].includes(currentView);
+    const isProtected = [ViewState.CREATE, ViewState.ADMIN, ViewState.PROFILE, ViewState.BACKSTAGE, ViewState.USER_MANAGEMENT].includes(currentView);
     if (isProtected && !user) {
       return <Auth onLogin={handleLogin} setView={setView} />;
     }
@@ -146,7 +147,9 @@ const App: React.FC = () => {
       case ViewState.AUTH:
         return <Auth onLogin={handleLogin} setView={setView} />;
       case ViewState.ADMIN:
-        return user?.isAdmin ? <AdminPanel nfts={nfts} /> : <Auth onLogin={handleLogin} setView={setView} />;
+        return user?.isAdmin ? <AdminPanel nfts={nfts} setView={setView} /> : <Auth onLogin={handleLogin} setView={setView} />;
+      case ViewState.USER_MANAGEMENT:
+        return user?.isAdmin ? <UserManagement /> : <Auth onLogin={handleLogin} setView={setView} />;
       default:
         return <div className="text-center p-20 font-mono italic">SIGNAL_LOST</div>;
     }

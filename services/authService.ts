@@ -13,7 +13,7 @@ import {
   signInWithPopup,
   User
 } from "firebase/auth";
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+import { ref, set, get, update } from "firebase/database";
 
 const CURRENT_USER_KEY = 'latitude_current_user';
 
@@ -54,16 +54,15 @@ export const authService = {
       const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, pass);
       const user = userCredential.user;
       
-      // Fetch profile from Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userRef = ref(db, 'users/' + user.uid);
+      const snapshot = await get(userRef);
       let profile: UserProfile;
 
-      if (userDoc.exists()) {
-        profile = userDoc.data() as UserProfile;
+      if (snapshot.exists()) {
+        profile = snapshot.val() as UserProfile;
       } else {
-        // Fallback for existing users without firestore records
         profile = mapFirebaseUserToProfile(user);
-        await setDoc(doc(db, 'users', user.uid), profile);
+        await set(userRef, profile);
       }
 
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
@@ -79,16 +78,15 @@ export const authService = {
       const result = await signInWithPopup(firebaseAuth, provider);
       const user = result.user;
 
-      // Check if user exists in Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userRef = ref(db, 'users/' + user.uid);
+      const snapshot = await get(userRef);
       let profile: UserProfile;
 
-      if (userDoc.exists()) {
-        profile = userDoc.data() as UserProfile;
+      if (snapshot.exists()) {
+        profile = snapshot.val() as UserProfile;
       } else {
-        // Create new profile for first-time Google login
         profile = mapFirebaseUserToProfile(user);
-        await setDoc(doc(db, 'users', user.uid), profile);
+        await set(userRef, profile);
       }
 
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
@@ -103,16 +101,12 @@ export const authService = {
       const userCredential = await createUserWithEmailAndPassword(firebaseAuth, data.email, data.password);
       const user = userCredential.user;
       
-      // Initial profile from helper
       const newUser = mapFirebaseUserToProfile(user);
-      // Override with form data if available
       newUser.name = data.name || newUser.name;
       if (data.handle) newUser.handle = data.handle.startsWith('@') ? data.handle : `@${data.handle}`;
 
-      // Save to Firestore: Key requirement fulfilled
-      await setDoc(doc(db, 'users', user.uid), newUser);
+      await set(ref(db, 'users/' + user.uid), newUser);
 
-      // Trigger Verification
       await sendEmailVerification(user);
 
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
@@ -131,10 +125,8 @@ export const authService = {
     if (user) {
       await updateEmail(user, newEmail);
       
-      // Update Firestore
-      await updateDoc(doc(db, 'users', user.uid), { email: newEmail });
+      await update(ref(db, 'users/' + user.uid), { email: newEmail });
 
-      // Update local storage
       const current = authService.getCurrentUser();
       if (current) {
         current.email = newEmail;
@@ -146,7 +138,7 @@ export const authService = {
   updateProfile: async (updates: Partial<UserProfile>) => {
     const user = firebaseAuth.currentUser;
     if (user) {
-      await updateDoc(doc(db, 'users', user.uid), updates);
+      await update(ref(db, 'users/' + user.uid), updates);
       
       const current = authService.getCurrentUser();
       if (current) {
@@ -182,10 +174,10 @@ export const authService = {
           callback(null);
         }
       } else {
-        // Fetch latest profile from Firestore to ensure synced state
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const profile = userDoc.data() as UserProfile;
+        const userRef = ref(db, 'users/' + user.uid);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+          const profile = snapshot.val() as UserProfile;
           localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
           callback(profile);
         } else {
