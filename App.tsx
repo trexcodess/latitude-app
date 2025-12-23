@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import GlobeViz from './components/GlobeViz';
@@ -9,6 +10,7 @@ import Auth from './views/Auth';
 import Pricing from './views/Pricing';
 import Help from './views/Help';
 import AdminPanel from './views/AdminPanel';
+import Backstage from './views/Backstage';
 import ThemeBackground from './components/ThemeBackground';
 import LegalModal from './components/LegalModal';
 import AIAssistant from './components/AIAssistant';
@@ -52,12 +54,12 @@ const App: React.FC = () => {
   const [nfts, setNfts] = useState<NFTItem[]>(INITIAL_NFTS);
 
   useEffect(() => {
-    // Subscribe to Firebase Auth changes
     const unsubscribe = authService.subscribeToAuth((u) => {
        if (!u && user?.id !== 'super_admin') setUser(null);
+       else if (u) setUser(u);
     });
     return () => unsubscribe();
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (isDarkMode) document.documentElement.classList.add('dark');
@@ -65,20 +67,10 @@ const App: React.FC = () => {
     localStorage.setItem('latitude_dark_mode', isDarkMode.toString());
   }, [isDarkMode]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsCommandPaletteOpen(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
   const connectWallet = () => {
+    // Treat connect wallet as Phantom Login
     if (!hasAcceptedLegal) {
       setShowLegal(true);
       return;
@@ -86,7 +78,9 @@ const App: React.FC = () => {
     setWeb3Status(Web3Status.CONNECTING);
     setTimeout(() => {
       setWeb3Status(Web3Status.CONNECTED);
-    }, 1500);
+      // If not logged in, show auth
+      if (!user) setView(ViewState.AUTH);
+    }, 1000);
   };
 
   const handleAcceptLegal = () => {
@@ -100,7 +94,7 @@ const App: React.FC = () => {
     if (user) {
       const updated = { ...user, tier };
       setUser(updated);
-      localStorage.setItem('latitude_user', JSON.stringify(updated));
+      authService.updateProfile({ tier });
       setView(ViewState.PROFILE);
     } else {
       setView(ViewState.AUTH);
@@ -113,14 +107,8 @@ const App: React.FC = () => {
     else setView(ViewState.PROFILE);
   };
 
-  const handleLogout = async () => {
-    await authService.logout();
-    setUser(null);
-    setView(ViewState.HOME);
-  };
-
   const renderContent = () => {
-    const isProtected = [ViewState.CREATE, ViewState.ADMIN, ViewState.PROFILE].includes(currentView);
+    const isProtected = [ViewState.CREATE, ViewState.ADMIN, ViewState.PROFILE, ViewState.BACKSTAGE].includes(currentView);
     if (isProtected && !user) {
       return <Auth onLogin={handleLogin} setView={setView} />;
     }
@@ -131,91 +119,46 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center justify-center min-h-[80vh] text-center pb-12 z-10 relative">
              <GlobeViz isDarkMode={isDarkMode} />
              <div className="max-w-4xl mx-auto mt-12 px-4">
-               <h1 className="text-6xl md:text-8xl font-black mb-8 tracking-tighter text-white uppercase">
-                 Creative <span className={isDarkMode ? "text-latitude-red font-cursive lowercase normal-case" : "text-white animate-cloud-logo font-cursive lowercase normal-case"}>Sovereignty</span>
+               <h1 className={`text-6xl md:text-8xl font-black mb-8 tracking-tighter uppercase italic leading-none ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                 Sovereign <span className="text-latitude-red font-cursive lowercase normal-case">Creative</span>
                </h1>
-               <p className={`text-xl mb-12 max-w-2xl mx-auto leading-relaxed ${isDarkMode ? 'text-gray-400' : 'text-slate-900 font-bold drop-shadow-sm'}`}>
-                 The premium decentralized studio for Music, Film, and TV. Built on Solana. Automated splits. Total control.
-               </p>
                <div className="flex flex-col md:flex-row gap-6 justify-center">
-                 <button 
-                   onClick={() => setView(ViewState.MARKETPLACE)}
-                   className="px-12 py-5 bg-latitude-red text-white font-black text-lg uppercase hover:scale-105 transition-all tracking-widest shadow-2xl rounded-2xl"
-                 >
-                   Explore Market
-                 </button>
-                 <button 
-                   onClick={() => setView(ViewState.CREATE)}
-                   className={`px-12 py-5 font-black text-lg uppercase hover:scale-105 transition-all tracking-widest rounded-2xl border-2 ${isDarkMode ? 'glass text-white border-white/20' : 'bg-latitude-menuDark text-white border-white/10'}`}
-                 >
-                   Enter Studio
-                 </button>
+                 <button onClick={() => setView(ViewState.MARKETPLACE)} className="px-12 py-5 bg-latitude-red text-white font-black text-lg uppercase hover:scale-105 transition-all tracking-widest shadow-2xl rounded-2xl border-b-4 border-red-900">Explore Gallery</button>
+                 <button onClick={() => setView(ViewState.BACKSTAGE)} className="px-12 py-5 bg-black dark:bg-white text-white dark:text-black font-black text-lg uppercase hover:scale-105 transition-all tracking-widest shadow-2xl rounded-2xl">Enter Ring</button>
                </div>
              </div>
           </div>
         );
       case ViewState.MARKETPLACE:
-        return <Marketplace items={nfts} user={user} setView={setView} onBuy={(id) => alert('Buying '+id)} />;
+        return <Marketplace items={nfts} user={user} setView={setView} onBuy={(id) => alert('Bought NFT Signal '+id)} />;
       case ViewState.PRICING:
         return <Pricing onUpgrade={handleUpgrade} />;
       case ViewState.HELP:
         return <Help />;
       case ViewState.SOCIAL:
-        return <Social />;
+        return <Social user={user} />;
       case ViewState.CREATE:
-        return <Create userTier={user?.isAdmin ? UserTier.LABEL_EXEC : (user?.tier || UserTier.LISTENER)} walletConnected={web3Status === Web3Status.CONNECTED} onMint={(n) => setNfts([n, ...nfts])} />;
+        return <Create user={user} userTier={user?.isAdmin ? UserTier.LABEL_EXEC : (user?.tier || UserTier.LISTENER)} walletConnected={web3Status === Web3Status.CONNECTED} onMint={(n) => setNfts([n, ...nfts])} />;
       case ViewState.PROFILE:
-        return <Profile user={user} nfts={nfts} web3Status={web3Status} onUpdateProfile={u => setUser(u)} />;
+        return <Profile user={user} nfts={nfts} onUpdateProfile={u => setUser(u)} />;
+      case ViewState.BACKSTAGE:
+        return <Backstage user={user} />;
       case ViewState.AUTH:
         return <Auth onLogin={handleLogin} setView={setView} />;
       case ViewState.ADMIN:
-        return user?.isAdmin ? <AdminPanel nfts={nfts} setNfts={setNfts} /> : <Auth onLogin={handleLogin} setView={setView} />;
+        return user?.isAdmin ? <AdminPanel nfts={nfts} /> : <Auth onLogin={handleLogin} setView={setView} />;
       default:
-        return <div className="text-white text-center p-20">COORDINATES UNKNOWN</div>;
+        return <div className="text-center p-20 font-mono italic">SIGNAL_LOST</div>;
     }
   };
 
   return (
-    <Layout 
-      currentView={currentView} 
-      setView={setView}
-      web3Status={web3Status}
-      connectWallet={connectWallet}
-      user={user}
-      isDarkMode={isDarkMode}
-      toggleDarkMode={toggleDarkMode}
-    >
+    <Layout currentView={currentView} setView={setView} web3Status={web3Status} connectWallet={connectWallet} user={user} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode}>
       <ThemeBackground isDarkMode={isDarkMode} />
-      
-      <div className="relative z-10 h-full px-6 py-8">
+      <div className="relative z-10 h-full">
         {renderContent()}
       </div>
-
-      <button 
-        onClick={() => setIsCommandPaletteOpen(true)}
-        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[55] border px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.3em] text-white hover:border-latitude-red transition-all shadow-2xl flex items-center gap-3 group ${isDarkMode ? 'glass border-white/10' : 'bg-latitude-menuDark border-white/10'}`}
-      >
-        <span className="w-2 h-2 bg-latitude-red rounded-full animate-pulse"></span>
-        NAVIGATOR
-        <kbd className="hidden md:inline-block bg-white/5 border border-white/10 px-2 py-1 rounded text-[8px] text-gray-500 font-mono group-hover:text-white transition-colors">⌘K</kbd>
-      </button>
-
-      {user && (
-        <button 
-          onClick={handleLogout}
-          className="fixed top-6 right-6 z-[55] glass px-4 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest text-white bg-latitude-red/20 border border-latitude-red hover:bg-latitude-red hover:text-white transition-all shadow-lg"
-        >
-          DISCONNECT
-        </button>
-      )}
-
-      <CommandPalette 
-        isOpen={isCommandPaletteOpen} 
-        onClose={() => setIsCommandPaletteOpen(false)} 
-        setView={setView} 
-        isAdmin={user?.isAdmin || false} 
-      />
-
+      <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} setView={setView} isAdmin={user?.isAdmin || false} />
       <LegalModal isOpen={showLegal} onAccept={handleAcceptLegal} />
       <AIAssistant />
     </Layout>

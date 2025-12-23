@@ -1,24 +1,45 @@
+
 import { UserProfile, UserTier } from '../types';
-import { auth as firebaseAuth } from './firebaseConfig';
+import { auth as firebaseAuth, db } from './firebaseConfig';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  updateEmail,
+  GoogleAuthProvider,
+  signInWithPopup,
+  User
 } from "firebase/auth";
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 
 const CURRENT_USER_KEY = 'latitude_current_user';
 
+const mapFirebaseUserToProfile = (user: User, isAdmin: boolean = false): UserProfile => ({
+  id: user.uid,
+  name: user.displayName || user.email?.split('@')[0] || 'Explorer',
+  handle: `@${user.uid.substring(0, 6).toLowerCase()}`,
+  email: user.email || '',
+  bio: 'Latitude Citizen.',
+  avatarUrl: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
+  bannerUrl: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=1000',
+  tier: UserTier.FAN_CLUB,
+  isAdmin: isAdmin || user.email === 'cloudshipent@protonmail.com', // Auto-admin for the specific email
+  socials: {}
+});
+
 export const authService = {
-  login: async (identifier: string, accessKey: string): Promise<UserProfile> => {
-    // 1. Super Admin Bypass (Bypass Firebase for internal debugging)
-    if (identifier === 'admin' && accessKey === '3000') {
+  login: async (email: string, pass: string): Promise<UserProfile> => {
+    // Super Admin Bypass
+    if (email === 'admin' && pass === '3000') {
       const admin: UserProfile = {
         id: 'super_admin',
-        name: 'Latitude Architect',
+        name: 'Latitude Administration',
         handle: '@admin',
-        email: 'admin@latitude.io',
-        bio: 'Root access to the Latitude ecosystem. Managing creative sovereignty.',
+        email: 'cloudshipent@protonmail.com',
+        bio: 'Root access to the Latitude ecosystem.',
         avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=admin',
         bannerUrl: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000',
         tier: UserTier.LABEL_EXEC,
@@ -29,29 +50,51 @@ export const authService = {
       return admin;
     }
 
-    // 2. Real Firebase Login
     try {
-      // Assuming identifier is email for Firebase. Handles could be mapped in Firestore later.
-      const userCredential = await signInWithEmailAndPassword(firebaseAuth, identifier, accessKey);
+      const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, pass);
       const user = userCredential.user;
       
-      const profile: UserProfile = {
-        id: user.uid,
-        name: user.displayName || identifier.split('@')[0],
-        handle: `@${user.uid.substring(0, 5)}`,
-        email: user.email || '',
-        bio: 'Latitude Citizen.',
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
-        bannerUrl: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=1000',
-        tier: UserTier.FAN_CLUB,
-        socials: {}
-      };
-      
+      // Fetch profile from Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      let profile: UserProfile;
+
+      if (userDoc.exists()) {
+        profile = userDoc.data() as UserProfile;
+      } else {
+        // Fallback for existing users without firestore records
+        profile = mapFirebaseUserToProfile(user);
+        await setDoc(doc(db, 'users', user.uid), profile);
+      }
+
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
       return profile;
     } catch (error: any) {
-      console.error("Firebase Login Error:", error);
-      throw new Error(error.message || 'Access denied by network security.');
+      throw new Error(error.message || 'Access denied.');
+    }
+  },
+
+  loginWithGoogle: async (): Promise<UserProfile> => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(firebaseAuth, provider);
+      const user = result.user;
+
+      // Check if user exists in Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      let profile: UserProfile;
+
+      if (userDoc.exists()) {
+        profile = userDoc.data() as UserProfile;
+      } else {
+        // Create new profile for first-time Google login
+        profile = mapFirebaseUserToProfile(user);
+        await setDoc(doc(db, 'users', user.uid), profile);
+      }
+
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
+      return profile;
+    } catch (error: any) {
+      throw new Error(error.message || 'Google authentication failed.');
     }
   },
 
@@ -59,24 +102,57 @@ export const authService = {
     try {
       const userCredential = await createUserWithEmailAndPassword(firebaseAuth, data.email, data.password);
       const user = userCredential.user;
-
-      const newUser: UserProfile = {
-        id: user.uid,
-        name: data.name,
-        handle: data.handle.startsWith('@') ? data.handle : `@${data.handle}`,
-        email: data.email,
-        bio: 'New explorer of the Latitude network.',
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
-        bannerUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000',
-        tier: UserTier.FAN_CLUB,
-        socials: {}
-      };
       
+      // Initial profile from helper
+      const newUser = mapFirebaseUserToProfile(user);
+      // Override with form data if available
+      newUser.name = data.name || newUser.name;
+      if (data.handle) newUser.handle = data.handle.startsWith('@') ? data.handle : `@${data.handle}`;
+
+      // Save to Firestore: Key requirement fulfilled
+      await setDoc(doc(db, 'users', user.uid), newUser);
+
+      // Trigger Verification
+      await sendEmailVerification(user);
+
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
       return newUser;
     } catch (error: any) {
-      console.error("Firebase Register Error:", error);
-      throw new Error(error.message || 'Registration failed protocol.');
+      throw new Error(error.message || 'Registration failed.');
+    }
+  },
+
+  sendResetEmail: async (email: string) => {
+    await sendPasswordResetEmail(firebaseAuth, email);
+  },
+
+  changeEmail: async (newEmail: string) => {
+    const user = firebaseAuth.currentUser;
+    if (user) {
+      await updateEmail(user, newEmail);
+      
+      // Update Firestore
+      await updateDoc(doc(db, 'users', user.uid), { email: newEmail });
+
+      // Update local storage
+      const current = authService.getCurrentUser();
+      if (current) {
+        current.email = newEmail;
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(current));
+      }
+    }
+  },
+
+  updateProfile: async (updates: Partial<UserProfile>) => {
+    const user = firebaseAuth.currentUser;
+    if (user) {
+      await updateDoc(doc(db, 'users', user.uid), updates);
+      
+      const current = authService.getCurrentUser();
+      if (current) {
+        const updated = { ...current, ...updates };
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated));
+      }
     }
   },
 
@@ -91,13 +167,30 @@ export const authService = {
   },
 
   subscribeToAuth: (callback: (user: UserProfile | null) => void) => {
-    return onAuthStateChanged(firebaseAuth, (user) => {
+    return onAuthStateChanged(firebaseAuth, async (user) => {
       if (!user) {
-        // Only clear if it wasn't the hardcoded admin
-        const current = localStorage.getItem(CURRENT_USER_KEY);
-        if (current && JSON.parse(current).id !== 'super_admin') {
-           localStorage.removeItem(CURRENT_USER_KEY);
-           callback(null);
+        const currentData = localStorage.getItem(CURRENT_USER_KEY);
+        if (currentData) {
+          const current = JSON.parse(currentData);
+          if (current.id !== 'super_admin') {
+            localStorage.removeItem(CURRENT_USER_KEY);
+            callback(null);
+          } else {
+            callback(current);
+          }
+        } else {
+          callback(null);
+        }
+      } else {
+        // Fetch latest profile from Firestore to ensure synced state
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const profile = userDoc.data() as UserProfile;
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
+          callback(profile);
+        } else {
+          const profile = mapFirebaseUserToProfile(user);
+          callback(profile);
         }
       }
     });

@@ -14,9 +14,10 @@ export enum ViewState {
 }
 
 export enum UserTier {
-  LISTENER = 'LISTENER', // Free
-  FAN_CLUB = 'FAN_CLUB', // Paid $9.99
-  LABEL_EXEC = 'LABEL_EXEC' // Premium
+  LISTENER = 'LISTENER',
+  FAN_CLUB = 'FAN_CLUB',
+  LABEL_EXEC = 'LABEL_EXEC',
+  DJ_PRO = 'DJ_PRO'
 }
 
 export interface CollaboratorSplit {
@@ -59,6 +60,31 @@ export interface UserProfile {
   isAdmin?: boolean;
 }
 
+export interface BattleCompetitor {
+  id: string;
+  name: string;
+  avatar: string;
+  votes: number;
+  currentLyrics?: string;
+}
+
+export type BattlePhase = 'IDLE' | 'ROUND_1' | 'ROUND_2' | 'VOTING' | 'RESULT';
+
+export interface BattleSession {
+  id: string;
+  competitors: [BattleCompetitor, BattleCompetitor];
+  djName: string;
+  activeDjId?: string;
+  isLive: boolean;
+  startTime: number;
+  status: 'live' | 'upcoming' | 'ended';
+  phase: BattlePhase;
+  timer: number;
+  bpm: number;
+  prizePool: number;
+  disputeStatus?: 'clear' | 'flagged' | 'auditing';
+}
+
 export interface ChatMessage {
   id: string;
   user: string;
@@ -73,9 +99,6 @@ export enum Web3Status {
   CONNECTED = 'CONNECTED'
 }
 
-/**
- * GatedContent represents resources that are unlocked only by holding specific NFTs.
- */
 export interface GatedContent {
   id: string;
   title: string;

@@ -1,5 +1,8 @@
 {
   "name": "Latitude",
   "description": "A decentralized music ecosystem and NFT platform powered by Web3, focusing on artist sovereignty and direct ownership.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
 }
