@@ -1,26 +1,27 @@
 {
-  "name": "latitude",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@google/genai": "^1.30.0",
-    "recharts": "^3.5.1",
-    "react-dom": "^19.2.0",
-    "react": "^19.2.0",
-    "three": "latest",
-    "d3": "^7.9.0",
-    "firebase": "^12.7.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
-  }
+        "name": "latitude",
+        "private": true,
+        "version": "0.0.0",
+        "type": "module",
+        "scripts": {
+                "dev": "vite",
+                "build": "vite build",
+                "preview": "vite preview"
+        },
+        "dependencies": {
+                "@google/generative-ai": "^0.12.0",
+                "d3": "^7.9.0",
+                "firebase": "^12.7.0",
+                "pinata": "^2.5.2",
+                "react": "^19.2.0",
+                "react-dom": "^19.2.0",
+                "recharts": "^3.5.1",
+                "three": "latest"
+        },
+        "devDependencies": {
+                "@types/node": "^22.14.0",
+                "@vitejs/plugin-react": "^5.0.0",
+                "typescript": "~5.8.2",
+                "vite": "^6.2.0"
+        }
 }

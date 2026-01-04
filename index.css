@@ -362,3 +362,41 @@ body {
         top: 0;
     }
 }
+.space-bg {
+  background-color: #000;
+}
+
+.sky-bg {
+  background-color: #f0f8ff;
+}
+
+.star {
+  position: absolute;
+  background-color: white;
+  border-radius: 50%;
+}
+
+.cloud {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.1;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.animate-twinkle {
+  animation: twinkle 4s infinite;
+}
+
+@keyframes drift {
+    0% { transform: translateX(-150%); }
+    100% { transform: translateX(150%); }
+}
+
+.animate-drift {
+    animation: drift 60s linear infinite;
+}

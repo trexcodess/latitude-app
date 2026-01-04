@@ -6,7 +6,6 @@ export enum ViewState {
   SOCIAL = 'SOCIAL',
   PROFILE = 'PROFILE',
   AUTH = 'AUTH',
-  PRICING = 'PRICING',
   HELP = 'HELP',
   CREATORS = 'CREATORS',
   BACKSTAGE = 'BACKSTAGE',

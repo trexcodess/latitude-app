@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const AIAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,14 +17,16 @@ const AIAssistant: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `You are Gemma_AI, a helpful support assistant for the Latitude NFT Music/Film platform. 
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});
+      const prompt = `You are Gemma_AI, a helpful support assistant for the Latitude NFT Music/Film platform. 
         You answer questions about Phantom Wallet, SOL, Revenue Splits (5% fee), and Tiers (Listener, Fan Club, Label Exec). 
-        User Query: ${userMsg}`,
-      });
-      setMessages(prev => [...prev, {role: 'ai', text: response.text || "I'm having trouble connecting to the network."}]);
+        User Query: ${userMsg}`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      setMessages(prev => [...prev, {role: 'ai', text: text || "I'm having trouble connecting to the network."}]);
     } catch (e) {
       setMessages(prev => [...prev, {role: 'ai', text: "Signal lost. Please try again later."}]);
     } finally {

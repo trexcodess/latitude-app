@@ -19,7 +19,6 @@ const Layout: React.FC<LayoutProps> = ({
   const navItems = [
     { id: ViewState.HOME, label: 'Studio' },
     { id: ViewState.MARKETPLACE, label: 'Market' },
-    { id: ViewState.PRICING, label: 'Tiers' },
     { id: ViewState.CREATE, label: 'Mint' },
     { id: ViewState.SOCIAL, label: 'Social' },
     { id: ViewState.HELP, label: 'Help' },

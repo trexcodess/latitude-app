@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserTier, NFTItem, UserProfile } from '../types';
 import { assetService } from '../services/assetService';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as THREE from 'three';
 
 interface CreateProps {
@@ -227,20 +227,24 @@ const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected
 
   const simulateEnhancement = async () => {
     setProcessing(true);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `I am mastering a ${fileMeta?.type || 'audio'} track using a Tesla T4 GPU Cluster. 
+      const prompt = `I am mastering a ${fileMeta?.type || 'audio'} track using a Tesla T4 GPU Cluster. 
         Current Settings - Low: ${eq.low}, Mid: ${eq.mid}, High: ${eq.high}. Compression: ${eq.comp}. 
         Give a highly technical, futuristic 15-word summary of the sonic upscaling achieved by the T4 architecture.`
-      });
-      setAiAnalysis(response.text || "Enhanced for broadcast.");
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      setAiAnalysis(text || "Enhanced for broadcast.");
       setTimeout(() => {
         setEnhancerLevel(100);
         setProcessing(false);
       }, 2500);
     } catch (e) {
+      console.error("Gemini Error in Create.tsx:", e);
       setProcessing(false);
     }
   };
