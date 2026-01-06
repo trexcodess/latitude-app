@@ -1,23 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import Layout from './components/Layout';
-import GlobeViz from './components/GlobeViz';
 import Marketplace from './views/Marketplace';
 import Create from './views/Create';
 import Social from './views/Social';
 import Profile from './views/Profile';
 import Auth from './views/Auth';
-import Pricing from './views/Pricing';
 import Help from './views/Help';
 import AdminPanel from './views/AdminPanel';
 import Backstage from './views/Backstage';
 import UserManagement from './views/UserManagement';
-import ThemeBackground from './components/ThemeBackground';
-import LegalModal from './components/LegalModal';
+import Minting from './views/Minting';
 import AIAssistant from './components/AIAssistant';
 import CommandPalette from './components/CommandPalette';
-import { ViewState, Web3Status, UserProfile, NFTItem, UserTier } from './types';
+import { ViewState, UserProfile, NFTItem, UserTier } from './types';
 import { authService } from './services/authService';
+import Home from './views/Home';
+import Navigation from './components/Navigation';
 
 const INITIAL_NFTS: NFTItem[] = [
   {
@@ -45,13 +43,9 @@ const INITIAL_NFTS: NFTItem[] = [
 
 const App: React.FC = () => {
   const [currentView, setView] = useState<ViewState>(ViewState.HOME);
-  const [web3Status, setWeb3Status] = useState<Web3Status>(Web3Status.DISCONNECTED);
-  const [showLegal, setShowLegal] = useState(false);
-  const [hasAcceptedLegal, setHasAcceptedLegal] = useState(() => localStorage.getItem('latitude_legal') === 'true');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   
   const [user, setUser] = useState<UserProfile | null>(authService.getCurrentUser());
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('latitude_dark_mode') !== 'false');
   const [nfts, setNfts] = useState<NFTItem[]>(INITIAL_NFTS);
 
   useEffect(() => {
@@ -62,109 +56,54 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, [user?.id]);
 
-  useEffect(() => {
-    if (isDarkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-    localStorage.setItem('latitude_dark_mode', isDarkMode.toString());
-  }, [isDarkMode]);
-
-  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
-
-  const connectWallet = () => {
-    // Treat connect wallet as Phantom Login
-    if (!hasAcceptedLegal) {
-      setShowLegal(true);
-      return;
-    }
-    setWeb3Status(Web3Status.CONNECTING);
-    setTimeout(() => {
-      setWeb3Status(Web3Status.CONNECTED);
-      // If not logged in, show auth
-      if (!user) setView(ViewState.AUTH);
-    }, 1000);
-  };
-
-  const handleAcceptLegal = () => {
-    localStorage.setItem('latitude_legal', 'true');
-    setHasAcceptedLegal(true);
-    setShowLegal(false);
-    connectWallet();
-  };
-
-  const handleUpgrade = (tier: UserTier) => {
-    if (user) {
-      const updated = { ...user, tier };
-      setUser(updated);
-      authService.updateProfile({ tier });
-      setView(ViewState.PROFILE);
-    } else {
-      setView(ViewState.AUTH);
-    }
-  };
-
   const handleLogin = (u: UserProfile) => {
     setUser(u);
-    if (u.isAdmin) setView(ViewState.ADMIN);
-    else setView(ViewState.PROFILE);
+    setView(ViewState.PROFILE);
   };
 
   const renderContent = () => {
-    const isProtected = [ViewState.CREATE, ViewState.ADMIN, ViewState.PROFILE, ViewState.BACKSTAGE, ViewState.USER_MANAGEMENT].includes(currentView);
+    const isProtected = [ViewState.CREATE, ViewState.ADMIN, ViewState.PROFILE, ViewState.BACKSTAGE, ViewState.USER_MANAGEMENT, ViewState.MINTING].includes(currentView);
     if (isProtected && !user) {
-      return <Auth onLogin={handleLogin} setView={setView} />;
+      return <Auth setView={setView} onLogin={handleLogin} />;
     }
 
     switch (currentView) {
       case ViewState.HOME:
-        return (
-          <div className="flex flex-col items-center justify-center min-h-[80vh] text-center pb-12 z-10 relative">
-             <GlobeViz isDarkMode={isDarkMode} />
-             <div className="max-w-4xl mx-auto mt-12 px-4">
-               <h1 className={`text-6xl md:text-8xl font-black mb-8 tracking-tighter uppercase italic leading-none ${isDarkMode ? 'text-white' : 'text-black'}`}>
-                 Sovereign <span className="text-latitude-red font-cursive lowercase normal-case">Creative</span>
-               </h1>
-               <div className="flex flex-col md:flex-row gap-6 justify-center">
-                 <button onClick={() => setView(ViewState.MARKETPLACE)} className="px-12 py-5 bg-latitude-red text-white font-black text-lg uppercase hover:scale-105 transition-all tracking-widest shadow-2xl rounded-2xl border-b-4 border-red-900">Explore Gallery</button>
-                 <button onClick={() => setView(ViewState.BACKSTAGE)} className="px-12 py-5 bg-black dark:bg-white text-white dark:text-black font-black text-lg uppercase hover:scale-105 transition-all tracking-widest shadow-2xl rounded-2xl">Enter Ring</button>
-               </div>
-             </div>
-          </div>
-        );
+        return <Home setView={setView} />;
       case ViewState.MARKETPLACE:
         return <Marketplace items={nfts} user={user} setView={setView} onBuy={(id) => alert('Bought NFT Signal '+id)} />;
-      case ViewState.PRICING:
-        return <Pricing onUpgrade={handleUpgrade} />;
       case ViewState.HELP:
-        return <Help />;
+        return <Help setView={setView}/>;
       case ViewState.SOCIAL:
-        return <Social user={user} />;
+        return <Social user={user} setView={setView} />;
       case ViewState.CREATE:
-        return <Create user={user} userTier={user?.isAdmin ? UserTier.LABEL_EXEC : (user?.tier || UserTier.LISTENER)} walletConnected={web3Status === Web3Status.CONNECTED} onMint={(n) => setNfts([n, ...nfts])} />;
+        return <Create user={user} userTier={user?.isAdmin ? UserTier.LABEL_EXEC : (user?.tier || UserTier.LISTENER)} walletConnected={true} onMint={(n) => setNfts([n, ...nfts])} setView={setView} />;
       case ViewState.PROFILE:
-        return <Profile user={user} nfts={nfts} onUpdateProfile={u => setUser(u)} />;
+        return <Profile user={user} nfts={nfts} onUpdateProfile={u => setUser(u)} setView={setView} />;
       case ViewState.BACKSTAGE:
-        return <Backstage user={user} />;
+        return <Backstage user={user} setView={setView} />;
+      case ViewState.MINTING:
+        return <Minting setView={setView} />;
       case ViewState.AUTH:
-        return <Auth onLogin={handleLogin} setView={setView} />;
+        return <Auth setView={setView} onLogin={handleLogin} />;
       case ViewState.ADMIN:
-        return user?.isAdmin ? <AdminPanel nfts={nfts} setView={setView} /> : <Auth onLogin={handleLogin} setView={setView} />;
+        return user?.isAdmin ? <AdminPanel nfts={nfts} setView={setView} /> : <Auth setView={setView} onLogin={handleLogin} />;
       case ViewState.USER_MANAGEMENT:
-        return user?.isAdmin ? <UserManagement /> : <Auth onLogin={handleLogin} setView={setView} />;
+        return user?.isAdmin ? <UserManagement setView={setView} /> : <Auth setView={setView} onLogin={handleLogin} />;
       default:
         return <div className="text-center p-20 font-mono italic">SIGNAL_LOST</div>;
     }
   };
 
   return (
-    <Layout currentView={currentView} setView={setView} web3Status={web3Status} connectWallet={connectWallet} user={user} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode}>
-      <ThemeBackground isDarkMode={isDarkMode} />
-      <div className="relative z-10 h-full">
+    <div className="app-shell">
+      <Navigation setView={setView} isLoggedIn={!!user} />
+      <div className="main-content">
         {renderContent()}
       </div>
       <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} setView={setView} isAdmin={user?.isAdmin || false} />
-      <LegalModal isOpen={showLegal} onAccept={handleAcceptLegal} />
       <AIAssistant />
-    </Layout>
+    </div>
   );
 };
 

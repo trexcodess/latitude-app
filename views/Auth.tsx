@@ -1,394 +1,326 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserProfile, ViewState } from '../types';
-import { authService } from '../services/authService';
+import { ViewState, UserProfile, UserTier } from '../types';
 
 interface AuthProps {
-  onLogin: (user: UserProfile) => void;
   setView: (view: ViewState) => void;
+  onLogin: (user: UserProfile) => void;
 }
 
-const STORAGE_KEY_EMAIL = 'latitude_saved_email';
-const STORAGE_KEY_PASS = 'latitude_saved_pass';
-const STORAGE_KEY_REMEMBER = 'latitude_remember_me';
+const Auth: React.FC<AuthProps> = ({ setView, onLogin }) => {
+  const [isLogin, setIsLogin] = useState(true);
 
-const Auth: React.FC<AuthProps> = ({ onLogin, setView }) => {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem(STORAGE_KEY_REMEMBER) === 'true');
-
-  const [formData, setFormData] = useState({
-    name: '',
-    handle: '',
-    email: '',
-    password: ''
-  });
-
-  const [loginData, setLoginData] = useState({
-    identifier: '',
-    password: ''
-  });
-
-  // Load saved credentials on mount
   useEffect(() => {
-    if (rememberMe) {
-      const savedEmail = localStorage.getItem(STORAGE_KEY_EMAIL) || '';
-      const savedPass = localStorage.getItem(STORAGE_KEY_PASS) || '';
-      setLoginData({
-        identifier: savedEmail,
-        password: savedPass
-      });
-    }
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 20;
+      const y = (e.clientY / window.innerHeight - 0.5) * 20;
+      
+      const brandH1 = document.querySelector('.brand-h1') as HTMLElement;
+      if (brandH1) {
+        brandH1.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+    };
   }, []);
 
-  const validatePassword = (pass: string) => {
-    return pass.length >= 8 && pass.length <= 32;
-  };
-
-  const handlePersistence = (email: string, pass: string) => {
-    if (rememberMe) {
-      localStorage.setItem(STORAGE_KEY_EMAIL, email);
-      localStorage.setItem(STORAGE_KEY_PASS, pass);
-      localStorage.setItem(STORAGE_KEY_REMEMBER, 'true');
-    } else {
-      localStorage.removeItem(STORAGE_KEY_EMAIL);
-      localStorage.removeItem(STORAGE_KEY_PASS);
-      localStorage.setItem(STORAGE_KEY_REMEMBER, 'false');
-    }
-  };
-
-  const handleRegister = async () => {
-    if (!validatePassword(formData.password)) {
-      setError("Secret Key must be between 8 and 32 characters.");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const newUser = await authService.register(formData);
-      handlePersistence(formData.email, formData.password);
-      setSuccess("Account created! Please check your email for a verification link.");
-      setTimeout(() => onLogin(newUser), 2000);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuthAction = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validatePassword(loginData.password)) {
-      setError("Access Key must be 8-32 characters.");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const user = await authService.login(loginData.identifier, loginData.password);
-      handlePersistence(loginData.identifier, loginData.password);
-      onLogin(user);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const btn = (e.target as HTMLElement).querySelector('.btn-primary') as HTMLButtonElement;
+    if (btn) {
+      btn.innerHTML = isLogin ? 'VALIDATING...' : 'GENERATING...';
+      btn.style.backgroundColor = '#000';
+      btn.style.color = '#ff0000';
+      btn.style.border = '1px solid #ff0000';
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const user = await authService.loginWithGoogle();
-      onLogin(user);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      await authService.sendResetEmail(loginData.identifier);
-      setSuccess("Reset link sent to your email.");
-      setTimeout(() => setMode('login'), 3000);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      setTimeout(() => {
+        btn.innerHTML = 'ACCESS GRANTED';
+        btn.style.boxShadow = '0 0 50px #ff0000';
+        const dummyUser: UserProfile = {
+            id: 'dummy_user',
+            name: 'NULL VECTOR',
+            handle: 'nullvector',
+            bio: 'Deconstructing digital artifacts through high-pressure inkstone compression. Exploring the intersection of brutalist geometry and dithered organic matter.',
+            avatarUrl: 'https://i.pravatar.cc/150?u=nullvector',
+            bannerUrl: '',
+            tier: UserTier.LISTENER,
+            socials: {}
+        };
+        setTimeout(() => onLogin(dummyUser), 1000);
+      }, 1500);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh] animate-fade-in p-4 relative z-50">
-      <div className="w-full max-w-lg bg-white dark:bg-[#080808] border border-gray-200 dark:border-latitude-dim shadow-2xl relative overflow-hidden transition-all duration-500 rounded-[40px]">
-        
-        {mode !== 'forgot' && (
-          <div className="flex border-b border-gray-200 dark:border-latitude-dim p-2 gap-2 bg-black/5 dark:bg-black/40">
-            <button 
-              onClick={() => setMode('login')}
-              className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.4em] transition-all rounded-2xl ${mode === 'login' ? 'bg-latitude-red text-white shadow-xl' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-            >
-              Login
-            </button>
-            <button 
-              onClick={() => { setMode('register'); setStep(1); }}
-              className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.4em] transition-all rounded-2xl ${mode === 'register' ? 'bg-latitude-red text-white shadow-xl' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-            >
-              Genesis
-            </button>
-          </div>
-        )}
+    <>
+      <style>{`
+        :root {
+            --obsidian: #050505;
+            --magma: #ff0000;
+            --magma-dim: #5c0000;
+            --glass: rgba(10, 10, 10, 0.8);
+            --fissure-glow: drop-shadow(0 0 8px rgba(255, 0, 0, 0.4));
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: crosshair;
+        }
+        .auth-body {
+            background-color: var(--obsidian);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.04;
+        }
+        .fissure-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: 
+                radial-gradient(circle at 70% 50%, var(--magma-dim) 0%, transparent 60%),
+                linear-gradient(135deg, #0a0a0a 0%, #000 100%);
+        }
+        .plate-left {
+            position: relative;
+            padding: 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 2;
+            clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
+            background: var(--obsidian);
+            border-right: 2px solid var(--magma);
+            box-shadow: 20px 0 80px rgba(0,0,0,0.8);
+            animation: plateShift 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+        @keyframes plateShift {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+        .brand-h1 {
+            font-size: clamp(3rem, 8vw, 10rem);
+            line-height: 0.85;
+            letter-spacing: -0.05em;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            font-weight: 900;
+            filter: var(--fissure-glow);
+        }
+        .brand-sub {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.5em;
+            color: var(--magma);
+            text-transform: uppercase;
+            opacity: 0;
+            animation: fadeIn 1s 0.8s forwards;
+        }
+        .plate-right {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+        }
+        .auth-portal {
+            width: 100%;
+            max-width: 420px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 1.5s 0.5s forwards;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .input-group {
+            position: relative;
+            margin-bottom: 2.5rem;
+        }
+        .input-group label {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            color: #666;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 0.5rem;
+            transition: color 0.3s;
+        }
+        input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #333;
+            padding: 1rem 0;
+            color: white;
+            font-family: 'Space Mono', monospace;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        input:focus {
+            border-bottom-color: var(--magma);
+            padding-left: 10px;
+        }
+        input:focus + label {
+            color: var(--magma);
+        }
+        .magma-line {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 1px;
+            width: 0;
+            background: var(--magma);
+            transition: width 0.4s ease;
+            box-shadow: 0 0 10px var(--magma);
+        }
+        input:focus ~ .magma-line {
+            width: 100%;
+        }
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-top: 4rem;
+        }
+        .btn-primary {
+            background: var(--magma);
+            color: white;
+            border: none;
+            padding: 1.5rem;
+            font-family: 'Space Mono', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+        }
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .btn-primary:hover::after {
+            left: 100%;
+        }
+        .btn-secondary {
+            background: transparent;
+            color: #666;
+            border: 1px solid #333;
+            padding: 1rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+        .btn-secondary:hover {
+            border-color: var(--magma);
+            color: white;
+        }
+        .shard {
+            position: absolute;
+            background: var(--magma);
+            opacity: 0.2;
+            pointer-events: none;
+        }
+        .shard-1 { width: 2px; height: 100px; top: 10%; right: 40%; transform: rotate(45deg); }
+        .shard-2 { width: 1px; height: 200px; bottom: 5%; left: 45%; transform: rotate(-15deg); }
+        @media (max-width: 900px) {
+            .fissure-container { grid-template-columns: 1fr; }
+            .plate-left { 
+                clip-path: none; 
+                border-right: none; 
+                border-bottom: 4px solid var(--magma);
+                height: 40vh;
+                padding: 2rem;
+                align-items: center;
+                text-align: center;
+            }
+            .plate-right { height: 60vh; padding: 2rem; }
+            .brand-h1 { font-size: 4rem; }
+        }
+      `}</style>
+      <div className="auth-body">
+        <svg className="absolute w-0 h-0">
+          <filter id="noiseFilter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+          </filter>
+        </svg>
 
-        <div className="p-12">
-          {error && (
-            <div className="mb-8 p-5 bg-red-500/10 border border-latitude-red/30 text-latitude-red text-[10px] font-black uppercase tracking-widest animate-shake rounded-2xl flex items-center gap-3">
-              <span className="text-lg">⚡</span>
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="mb-8 p-5 bg-green-500/10 border border-green-500/30 text-green-500 text-[10px] font-black uppercase tracking-widest rounded-2xl flex items-center gap-3">
-              <span className="text-lg">✓</span>
-              {success}
-            </div>
-          )}
+        <div className="grain-overlay" style={{ filter: 'url(#noiseFilter)' }}></div>
 
-          {mode === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-8">
-               <div className="mb-10">
-                 <h2 className="text-5xl font-black text-latitude-blue dark:text-white uppercase tracking-tighter leading-none mb-3 italic">Identity <span className="text-latitude-red">Sync</span></h2>
-                 <p className="text-gray-500 text-[10px] uppercase tracking-[0.4em] font-mono">Input your sovereignty credentials.</p>
-               </div>
-               
-               <div className="space-y-6">
-                 <div>
-                   <label className="block text-[9px] font-black text-gray-500 mb-3 uppercase tracking-[0.3em]">Authorized Email Vector</label>
-                   <input 
-                     type="email" 
-                     required 
-                     value={loginData.identifier}
-                     onChange={e => setLoginData({...loginData, identifier: e.target.value})}
-                     className="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-latitude-dim p-5 text-black dark:text-white focus:border-latitude-red focus:outline-none transition-all rounded-2xl font-mono text-sm placeholder:text-gray-700" 
-                     placeholder="SIGNAL_ID@CORE.NET" 
-                   />
-                 </div>
-                 <div>
-                   <div className="flex justify-between items-center mb-3">
-                     <label className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em]">Neural Access Key</label>
-                     <button type="button" onClick={() => setMode('forgot')} className="text-[9px] text-latitude-blue hover:text-latitude-red font-black uppercase tracking-widest transition-colors">Recover Key</button>
-                   </div>
-                   <div className="relative group">
-                     <input 
-                       type={showPassword ? "text" : "password"} 
-                       required 
-                       minLength={8}
-                       maxLength={32}
-                       value={loginData.password}
-                       onChange={e => setLoginData({...loginData, password: e.target.value})}
-                       className="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-latitude-dim p-5 pr-14 text-black dark:text-white focus:border-latitude-red focus:outline-none transition-all rounded-2xl font-mono text-sm placeholder:text-gray-700" 
-                       placeholder="••••••••" 
-                     />
-                     <button 
-                        type="button" 
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition-colors"
-                     >
-                        {showPassword ? '🐵' : '🙈'}
-                     </button>
-                   </div>
-                   {loginData.password.length > 0 && (
-                     <div className="mt-3 flex gap-1">
-                        {[...Array(4)].map((_, i) => (
-                           <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-500 ${loginData.password.length >= (i+1)*8 ? 'bg-latitude-solana' : 'bg-gray-800'}`}></div>
-                        ))}
-                     </div>
-                   )}
-                 </div>
+        <main className="fissure-container">
+          <section className="plate-left">
+            <div className="shard shard-1"></div>
+            <div className="shard shard-2"></div>
+            <p className="brand-sub">Creative Sovereignty</p>
+            <h1 className="brand-h1">LATITUDE</h1>
+            <p className="brand-sub opacity-40" style={{ letterSpacing: '0.1em'}}>EST. MMXXIV &copy;</p>
+          </section>
 
-                 <div className="flex items-center gap-3 py-2">
-                    <button 
-                       type="button"
-                       onClick={() => setRememberMe(!rememberMe)}
-                       className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${rememberMe ? 'bg-latitude-solana border-latitude-solana' : 'border-gray-800 hover:border-latitude-red'}`}
+          <section className="plate-right">
+            <div className="auth-portal">
+              <form onSubmit={handleAuthAction}>
+                <div className="input-group">
+                  <label htmlFor="identity">Sovereign Identity</label>
+                  <input type="text" id="identity" placeholder="EMAIL OR PSEUDONYM" autoComplete="off" />
+                  <div className="magma-line"></div>
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="key">Access Cipher</label>
+                  <input type="password" id="key" placeholder="••••••••••••" autoComplete="off" />
+                  <div className="magma-line"></div>
+                </div>
+
+                <div className="actions">
+                  <button type="submit" className="btn-primary">{isLogin ? 'Initiate Descent' : 'Create Sovereign ID'}</button>
+                  <button type="button" className="btn-secondary" onClick={() => setIsLogin(!isLogin)}>
+                    {isLogin ? 'Request Passage (Register)' : 'Already have an ID (Login)'}
+                  </button>
+                   <button
+                        onClick={() => setView(ViewState.HOME)}
+                        className="btn-secondary"
                     >
-                       {rememberMe && <span className="text-[10px] text-black">✓</span>}
+                        Continue as Guest
                     </button>
-                    <span className="text-[9px] font-black uppercase text-gray-500 tracking-widest cursor-pointer" onClick={() => setRememberMe(!rememberMe)}>Persist Session (Local Storage)</span>
-                 </div>
-               </div>
-
-               <button 
-                 disabled={loading} 
-                 className="w-full py-6 bg-latitude-red text-white font-black uppercase hover:bg-white hover:text-black transition-all tracking-[0.5em] rounded-2xl shadow-[0_20px_40px_rgba(255,0,0,0.2)] text-xs mt-4 border-b-4 border-red-900"
-               >
-                 {loading ? 'SYNCHRONIZING...' : 'INITIALIZE UPLINK'}
-               </button>
-
-               <div className="relative py-8">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200 dark:border-latitude-dim"></div></div>
-                  <div className="relative flex justify-center text-[9px] uppercase font-black tracking-[0.4em] text-gray-700"><span className="px-4 bg-white dark:bg-[#080808]">Cross-Chain Auth</span></div>
-               </div>
-
-               <div className="grid grid-cols-2 gap-4">
-                  <button type="button" onClick={handleGoogleLogin} className="flex items-center justify-center gap-3 p-5 border border-gray-200 dark:border-latitude-dim rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-all group">
-                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 grayscale group-hover:grayscale-0 transition-all" alt="G" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 group-hover:text-white">Google Hub</span>
-                  </button>
-                  <button type="button" onClick={() => setView(ViewState.HELP)} className="flex items-center justify-center gap-3 p-5 border border-gray-200 dark:border-latitude-dim rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-all group">
-                     <span className="text-xl opacity-40 group-hover:opacity-100 transition-opacity">👻</span>
-                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 group-hover:text-white">Phantom</span>
-                  </button>
-               </div>
-            </form>
-          )}
-
-          {mode === 'register' && (
-            <div>
-              {step === 1 ? (
-                <div className="space-y-8">
-                   <div className="mb-10">
-                     <h2 className="text-5xl font-black text-latitude-blue dark:text-white uppercase tracking-tighter leading-none italic mb-3">New <span className="text-latitude-teal">Genesis</span></h2>
-                     <p className="text-gray-500 text-[10px] uppercase tracking-[0.4em] font-mono">Register your creative footprint.</p>
-                   </div>
-
-                   <div className="space-y-6">
-                     <div>
-                       <label className="block text-[9px] font-black text-gray-500 mb-3 uppercase tracking-widest">Artist Designation</label>
-                       <input 
-                          type="text" 
-                          required
-                          value={formData.name}
-                          onChange={e => setFormData({...formData, name: e.target.value})}
-                          className="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-latitude-dim p-5 text-black dark:text-white focus:border-latitude-teal focus:outline-none transition-all rounded-2xl font-mono text-sm" 
-                          placeholder="ARTIST_NAME"
-                        />
-                     </div>
-                     <div>
-                       <label className="block text-[9px] font-black text-gray-500 mb-3 uppercase tracking-widest">Digital Vector (Email)</label>
-                       <input 
-                          type="email" 
-                          required
-                          value={formData.email}
-                          onChange={e => setFormData({...formData, email: e.target.value})}
-                          className="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-latitude-dim p-5 text-black dark:text-white focus:border-latitude-teal focus:outline-none transition-all rounded-2xl font-mono text-sm" 
-                          placeholder="EMAIL@PROTOCOL.COM"
-                        />
-                     </div>
-                     <div>
-                       <div className="flex justify-between mb-3">
-                         <label className="block text-[9px] font-black text-gray-500 uppercase tracking-widest">Secret Access Key (8-32 Chars)</label>
-                         <span className={`text-[9px] font-black uppercase tracking-widest ${validatePassword(formData.password) ? 'text-latitude-solana' : 'text-latitude-red'}`}>
-                            {formData.password.length} / 32
-                         </span>
-                       </div>
-                       <div className="relative group">
-                          <input 
-                            type={showPassword ? "text" : "password"} 
-                            required
-                            minLength={8}
-                            maxLength={32}
-                            value={formData.password}
-                            onChange={e => setFormData({...formData, password: e.target.value})}
-                            className="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-latitude-dim p-5 pr-14 text-black dark:text-white focus:border-latitude-teal focus:outline-none transition-all rounded-2xl font-mono text-sm" 
-                            placeholder="SECRET_KEY_V1"
-                          />
-                          <button 
-                              type="button" 
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition-colors"
-                          >
-                              {showPassword ? '🐵' : '🙈'}
-                          </button>
-                       </div>
-                       <div className="mt-3 flex gap-1">
-                          {[...Array(4)].map((_, i) => (
-                             <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-500 ${formData.password.length >= (i+1)*8 ? 'bg-latitude-teal' : 'bg-gray-800'}`}></div>
-                          ))}
-                       </div>
-                     </div>
-                   </div>
-
-                   <button 
-                     onClick={() => setStep(2)}
-                     disabled={!formData.name || !formData.email || !validatePassword(formData.password)}
-                     className="w-full py-6 bg-latitude-teal text-black font-black uppercase hover:bg-white transition-all tracking-[0.5em] mt-6 disabled:opacity-20 rounded-2xl shadow-xl text-xs border-b-4 border-latitude-blue"
-                   >
-                     VERIFY PROTOCOL
-                   </button>
                 </div>
-              ) : (
-                <div className="space-y-10 text-center animate-fade-in py-6">
-                   <div className="mb-6 text-left">
-                     <h2 className="text-4xl font-black text-latitude-blue dark:text-white uppercase tracking-tighter italic">Tier <span className="text-latitude-red">Selection</span></h2>
-                     <p className="text-gray-500 text-[10px] uppercase tracking-[0.4em] font-mono mt-2">Initialize your creator contract.</p>
-                   </div>
-
-                   <div className="border border-latitude-red/20 bg-latitude-red/5 p-10 rounded-[40px] relative overflow-hidden group hover:scale-[1.02] transition-all shadow-inner">
-                      <div className="absolute top-0 right-0 bg-latitude-red text-white text-[9px] font-black px-6 py-2 tracking-[0.3em] rounded-bl-3xl shadow-lg">CREATOR_V1</div>
-                      <p className="text-[10px] text-gray-600 uppercase tracking-[0.5em] mb-4 font-black">Entry Frequency</p>
-                      <div className="flex items-baseline justify-center gap-2">
-                        <span className="text-7xl font-black text-white italic tracking-tighter">$9.99</span>
-                        <span className="text-gray-600 font-mono text-[10px] uppercase">/ Monthly Split</span>
-                      </div>
-                      <p className="text-[9px] font-mono text-gray-500 uppercase mt-4 tracking-widest italic opacity-50">Locked for early adopters.</p>
-                   </div>
-
-                   <div className="space-y-6">
-                     <button 
-                       onClick={handleRegister}
-                       disabled={loading}
-                       className="w-full py-6 bg-latitude-red text-white font-black rounded-3xl transition-all flex items-center justify-center gap-3 group shadow-[0_20px_40px_rgba(255,0,0,0.2)] border-b-4 border-red-900"
-                     >
-                       {loading ? <span className="animate-pulse font-mono tracking-[0.3em] uppercase text-[10px]">Processing Genesis...</span> : <span className="tracking-[0.5em] uppercase text-xs">Authorize Identity</span>}
-                     </button>
-                     <button onClick={() => setStep(1)} className="text-[10px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-colors border border-white/5 px-6 py-2 rounded-full">Recalibrate Signal</button>
-                   </div>
-                </div>
-              )}
+              </form>
             </div>
-          )}
-
-          {mode === 'forgot' && (
-             <form onSubmit={handleResetPassword} className="space-y-10">
-                <div className="mb-10">
-                  <h2 className="text-5xl font-black text-latitude-blue dark:text-white uppercase tracking-tighter leading-none mb-3 italic">Signal <span className="text-latitude-red">Lost</span></h2>
-                  <p className="text-gray-500 text-[10px] uppercase tracking-[0.4em] font-mono">We'll broadcast a reset signal to your vector.</p>
-                </div>
-                <div>
-                  <label className="block text-[9px] font-black text-gray-500 mb-3 uppercase tracking-[0.3em]">Registered Digital Vector (Email)</label>
-                  <input 
-                    type="email" 
-                    required 
-                    value={loginData.identifier}
-                    onChange={e => setLoginData({...loginData, identifier: e.target.value})}
-                    className="w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-latitude-dim p-5 text-black dark:text-white focus:border-latitude-red focus:outline-none transition-all rounded-2xl font-mono text-sm" 
-                    placeholder="NAME@EMAIL.COM" 
-                  />
-                </div>
-                <button 
-                  disabled={loading} 
-                  className="w-full py-6 bg-latitude-red text-white font-black uppercase hover:bg-white hover:text-black transition-all tracking-[0.5em] rounded-2xl shadow-2xl text-xs mt-4 border-b-4 border-red-900"
-                >
-                  {loading ? 'BROADCASTING...' : 'SEND RECOVERY SIGNAL'}
-                </button>
-                <div className="text-center">
-                  <button type="button" onClick={() => setMode('login')} className="text-[10px] font-black text-gray-600 hover:text-white uppercase tracking-[0.4em] transition-colors border-b border-white/10 pb-1">Return to Login Protocol</button>
-                </div>
-             </form>
-          )}
-        </div>
+          </section>
+        </main>
       </div>
-    </div>
+    </>
   );
 };
 

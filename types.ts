@@ -10,7 +10,8 @@ export enum ViewState {
   CREATORS = 'CREATORS',
   BACKSTAGE = 'BACKSTAGE',
   ADMIN = 'ADMIN',
-  USER_MANAGEMENT = 'USER_MANAGEMENT'
+  USER_MANAGEMENT = 'USER_MANAGEMENT',
+  MINTING = 'MINTING'
 }
 
 export enum UserTier {
@@ -91,19 +92,4 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
   isSystem?: boolean;
-}
-
-export enum Web3Status {
-  DISCONNECTED = 'DISCONNECTED',
-  CONNECTING = 'CONNECTING',
-  CONNECTED = 'CONNECTED'
-}
-
-export interface GatedContent {
-  id: string;
-  title: string;
-  description: string;
-  thumbnailUrl: string;
-  type: 'download' | 'video' | 'audio';
-  requiredNftId: string;
 }

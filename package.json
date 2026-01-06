@@ -10,17 +10,23 @@
         },
         "dependencies": {
                 "@google/generative-ai": "^0.12.0",
+                "@irys/sdk": "^0.2.11",
+                "@irys/upload": "^0.0.15",
+                "@irys/upload-ethereum": "^0.0.16",
                 "d3": "^7.9.0",
                 "firebase": "^12.7.0",
                 "pinata": "^2.5.2",
                 "react": "^19.2.0",
                 "react-dom": "^19.2.0",
-                "recharts": "^3.5.1",
-                "three": "latest"
+                "recharts": "^3.5.1"
         },
         "devDependencies": {
+                "@tailwindcss/postcss": "^4.1.18",
                 "@types/node": "^22.14.0",
                 "@vitejs/plugin-react": "^5.0.0",
+                "autoprefixer": "^10.4.23",
+                "postcss": "^8.5.6",
+                "tailwindcss": "^4.1.18",
                 "typescript": "~5.8.2",
                 "vite": "^6.2.0"
         }

@@ -6,18 +6,21 @@ const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'tournaments' | 'system'>('overview');
 
   return (
-    <div className="p-4 md:p-12 max-w-7xl mx-auto animate-fade-in pb-32">
+    <div className="p-4 sm:p-6 md:p-12 max-w-7xl mx-auto animate-fade-in pb-32">
       <header className="mb-16 border-b border-white/10 pb-12 flex flex-col md:flex-row justify-between items-center md:items-end gap-8">
         <div className="text-center md:text-left">
-          <h1 className="text-7xl md:text-9xl font-black text-white uppercase tracking-tighter italic leading-none">Super <span className="text-latitude-red">Admin</span></h1>
-          <p className="text-latitude-teal font-mono text-sm mt-4 uppercase tracking-[0.6em]">Global Sovereignty Control • V4.2.0</p>
+          <h1 className="text-6xl sm:text-7xl md:text-9xl font-black text-white uppercase tracking-tighter italic leading-none">Super <span className="text-latitude-red">Admin</span></h1>
+          <p className="text-latitude-teal font-mono text-sm mt-4 uppercase tracking-widest sm:tracking-[0.6em]">Global Sovereignty Control • V4.2.0</p>
         </div>
-        <div className="bg-vst p-6 rounded-3xl border border-white/10 text-right min-w-[200px] shadow-2xl">
-          <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.4em] mb-2">Network Load Delta</p>
-          <p className="text-4xl font-mono text-latitude-solana animate-pulse">0.02 MS</p>
-          <div className="h-1 w-full bg-latitude-solana/10 rounded-full mt-2 overflow-hidden">
-            <div className="h-full bg-latitude-solana w-1/4"></div>
-          </div>
+        <div className="flex items-center gap-4">
+            <div className="bg-vst p-6 rounded-3xl border border-white/10 text-right min-w-[200px] shadow-2xl">
+              <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.4em] mb-2">Network Load Delta</p>
+              <p className="text-4xl font-mono text-latitude-solana animate-pulse">0.02 MS</p>
+              <div className="h-1 w-full bg-latitude-solana/10 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-latitude-solana w-1/4"></div>
+              </div>
+            </div>
+            <button onClick={() => setView(ViewState.HOME)} className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-latitude-red transition-colors">Close</button>
         </div>
       </header>
 
@@ -26,7 +29,7 @@ const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
-            className={`px-12 py-5 text-xs font-black uppercase tracking-[0.4em] transition-all rounded-2xl border ${
+            className={`px-8 sm:px-12 py-4 sm:py-5 text-xs font-black uppercase tracking-widest sm:tracking-[0.4em] transition-all rounded-2xl border ${
               activeTab === tab 
               ? 'bg-latitude-red border-latitude-red text-white shadow-[0_0_30px_rgba(255,0,0,0.3)] scale-105' 
               : 'bg-vst/40 border-white/5 text-gray-500 hover:text-white hover:bg-white/5'
@@ -46,9 +49,9 @@ const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void
               { label: 'Asset Depth', value: nfts.length.toString(), sub: 'Minted Signal', color: 'text-latitude-purple' },
               { label: 'Burn Rate', value: '0.005 SOL', sub: 'Per Tx', color: 'text-latitude-red' },
             ].map((stat, i) => (
-              <div key={i} className="bg-vst/40 backdrop-blur-md p-10 rounded-[50px] border border-white/5 group hover:border-latitude-red transition-all shadow-xl">
-                 <p className="text-[10px] text-gray-600 uppercase font-black tracking-[0.3em] mb-6">{stat.label}</p>
-                 <p className={`text-5xl font-black uppercase italic tracking-tighter ${stat.color}`}>{stat.value}</p>
+              <div key={i} className="bg-vst/40 backdrop-blur-md p-8 sm:p-10 rounded-3xl sm:rounded-[50px] border border-white/5 group hover:border-latitude-red transition-all shadow-xl">
+                 <p className="text-[10px] text-gray-600 uppercase font-black tracking-widest sm:tracking-[0.3em] mb-6">{stat.label}</p>
+                 <p className={`text-4xl sm:text-5xl font-black uppercase italic tracking-tighter ${stat.color}`}>{stat.value}</p>
                  <p className="text-[10px] text-gray-500 mt-4 font-mono uppercase tracking-widest">{stat.sub}</p>
               </div>
             ))}
@@ -77,13 +80,13 @@ const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void
         {activeTab === 'tournaments' && (
           <div className="lg:col-span-4 space-y-12">
              <div className="bg-vst/40 backdrop-blur-md p-10 rounded-[50px] border border-white/5 shadow-2xl">
-                <div className="flex justify-between items-center mb-10">
-                   <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter">Active Battle <span className="text-latitude-red">Governance</span></h3>
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-4">
+                   <h3 className="text-2xl sm:text-3xl font-black text-white uppercase italic tracking-tighter">Active Battle <span className="text-latitude-red">Governance</span></h3>
                    <button className="px-6 py-2 bg-latitude-solana text-black font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-white transition-all">Export Protocol Log</button>
                 </div>
                 
                 <div className="overflow-x-auto">
-                   <table className="w-full text-left">
+                   <table className="w-full text-left min-w-[800px]">
                       <thead className="text-[10px] font-black uppercase text-gray-600 border-b border-white/5">
                          <tr>
                             <th className="pb-6 tracking-[0.3em]">Signal ID</th>
@@ -104,7 +107,7 @@ const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void
                                   <span className="text-green-500 font-black uppercase tracking-widest">CLEAR_SIGNAL</span>
                                </div>
                             </td>
-                            <td className="py-8 flex gap-3">
+                            <td className="py-8 flex flex-wrap gap-3">
                                <button className="px-5 py-2 bg-white/5 hover:bg-latitude-red text-white transition-all rounded-xl border border-white/10 uppercase font-black text-[9px] tracking-widest">Flag Split</button>
                                <button className="px-5 py-2 bg-white/5 hover:bg-latitude-blue text-white transition-all rounded-xl border border-white/10 uppercase font-black text-[9px] tracking-widest">Adjust Pool</button>
                             </td>
@@ -119,7 +122,7 @@ const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void
                                   <span className="text-yellow-500 font-black uppercase tracking-widest">PENDING_REVIEW</span>
                                </div>
                             </td>
-                            <td className="py-8 flex gap-3">
+                            <td className="py-8 flex flex-wrap gap-3">
                                <button className="px-5 py-2 bg-latitude-red text-white transition-all rounded-xl uppercase font-black text-[9px] tracking-widest">Review Dispute</button>
                                <button className="px-5 py-2 bg-white/5 hover:bg-latitude-blue text-white transition-all rounded-xl border border-white/10 uppercase font-black text-[9px] tracking-widest">Lock Sync</button>
                             </td>
@@ -134,7 +137,7 @@ const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void
                    <div className="absolute top-0 right-0 p-8 text-5xl opacity-10 group-hover:scale-125 transition-transform">💎</div>
                    <h3 className="text-2xl font-black text-latitude-blue uppercase mb-4 italic tracking-tighter">Prize Liquidity Escrow</h3>
                    <p className="text-xs text-gray-500 font-mono mb-8 uppercase leading-relaxed tracking-widest">Audit the smart contract wallets holding tournament prizes. Total locked value across all active rings must exceed 100.0 SOL to maintain network integrity.</p>
-                   <div className="flex gap-4">
+                   <div className="flex flex-col sm:flex-row gap-4">
                       <input className="bg-black/60 border border-white/10 p-5 rounded-2xl flex-1 font-mono text-xs text-latitude-blue focus:outline-none focus:border-latitude-blue" placeholder="Enter Escrow Hash..." />
                       <button className="px-10 py-5 bg-latitude-blue text-white font-black uppercase tracking-[0.3em] text-[10px] rounded-2xl shadow-xl hover:bg-white hover:text-black transition-all">Audit Hub</button>
                    </div>
@@ -144,8 +147,8 @@ const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void
                    <div className="absolute top-0 right-0 p-8 text-5xl opacity-10 group-hover:scale-125 transition-transform">⚖️</div>
                    <h3 className="text-2xl font-black text-latitude-purple uppercase mb-4 italic tracking-tighter">Global Split Policy</h3>
                    <p className="text-xs text-gray-500 font-mono mb-8 uppercase leading-relaxed tracking-widest">Adjust the default platform cut for high-volume battles. Current global delta is 5.0%. Executives can lower this for Tier 3 partnerships to incentivize adoption.</p>
-                   <div className="flex gap-6 items-center">
-                      <input type="range" className="flex-1 accent-latitude-purple" min="0" max="10" step="0.5" />
+                   <div className="flex flex-col sm:flex-row gap-6 items-center">
+                      <input type="range" className="flex-1 accent-latitude-purple w-full sm:w-auto" min="0" max="10" step="0.5" />
                       <span className="text-2xl font-black text-white font-mono">5.0%</span>
                       <button className="px-8 py-4 bg-latitude-purple text-white font-black uppercase tracking-[0.3em] text-[10px] rounded-2xl shadow-xl hover:bg-white hover:text-black transition-all">Set Delta</button>
                    </div>
@@ -156,11 +159,11 @@ const AdminPanel: React.FC<{ nfts: NFTItem[], setView: (view: ViewState) => void
 
         {activeTab === 'system' && (
           <div className="lg:col-span-4 space-y-12">
-             <div className="bg-latitude-red/5 p-12 border border-latitude-red/20 rounded-[80px] text-center max-w-4xl mx-auto shadow-2xl relative overflow-hidden">
+             <div className="bg-latitude-red/5 p-8 sm:p-12 border border-latitude-red/20 rounded-[50px] sm:rounded-[80px] text-center max-w-4xl mx-auto shadow-2xl relative overflow-hidden">
                 <div className="absolute inset-0 bg-latitude-red/5 animate-pulse opacity-50"></div>
-                <h3 className="text-5xl font-black text-latitude-red uppercase mb-6 italic tracking-tighter relative z-10">PROTOCOL KILLSWITCH</h3>
+                <h3 className="text-3xl sm:text-5xl font-black text-latitude-red uppercase mb-6 italic tracking-tighter relative z-10">PROTOCOL KILLSWITCH</h3>
                 <p className="text-gray-500 mb-10 max-w-2xl mx-auto font-mono uppercase text-xs leading-loose tracking-[0.2em] relative z-10">Permanently disable all NFT deployments, marketplace trades, and battle prizes across the entire Latitude ecosystem. This action requires multisig authorization from 3 root admins and is only for catastrophic system breaches.</p>
-                <button className="px-16 py-6 bg-latitude-red text-white font-black uppercase tracking-[0.5em] text-xs rounded-3xl hover:scale-110 active:scale-95 transition-all shadow-2xl relative z-10">INITIATE GLOBAL LOCKDOWN</button>
+                <button className="px-12 sm:px-16 py-5 sm:py-6 bg-latitude-red text-white font-black uppercase tracking-widest sm:tracking-[0.5em] text-xs rounded-3xl hover:scale-110 active:scale-95 transition-all shadow-2xl relative z-10">INITIATE GLOBAL LOCKDOWN</button>
              </div>
              
              <div className="grid md:grid-cols-3 gap-8">

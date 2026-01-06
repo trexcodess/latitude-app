@@ -1,163 +1,452 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChatMessage, UserTier, UserProfile } from '../types';
-import { getAIResponse } from '../services/geminiService';
+import { ChatMessage, UserProfile, ViewState } from '../types';
 
-const ROOMS = ['Global Lounge', 'Synth Club', 'Video Art', 'Developer Den'];
-
-const Social: React.FC<{ user: UserProfile | null }> = ({ user }) => {
-  const [activeRoom, setActiveRoom] = useState(ROOMS[0]);
+const Social: React.FC<{ user: UserProfile | null, setView: (view: ViewState) => void; }> = ({ user, setView }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', user: 'System', text: 'Welcome to the Latitude Global Lounge.', timestamp: Date.now(), isSystem: true },
-    { id: '2', user: 'Latitude_AI', text: 'I am your AI host. What are we listening to tonight?', timestamp: Date.now(), isSystem: true }
+    {
+        id: '1',
+        user: 'User_882',
+        text: 'The bass response in this lounge is incredible.',
+        timestamp: Date.now() - 20000
+    },
+    {
+        id: '2',
+        user: 'X-PHASE [AI]',
+        text: 'Adjusting sub-harmonics to match your biometric feedback. Enjoy the resonance.',
+        timestamp: Date.now() - 10000,
+        isAI: true
+    },
+    {
+        id: '3',
+        user: 'Nova_Core',
+        text: 'Drop the serrated beats.',
+        timestamp: Date.now()
+    }
   ]);
   const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  
-  const [aiPlaylist, setAiPlaylist] = useState<string[]>(['Neon Odyssey - Sol-Runner', 'Protocol Zero - Shadow Studio']);
-  const [playlistInput, setPlaylistInput] = useState('');
+  const feedRef = useRef<HTMLDivElement>(null);
 
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
+  // Animate visualizer bars
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const bars = document.querySelectorAll('.bar');
+    const interval = setInterval(() => {
+        bars.forEach(bar => {
+            const height = Math.random() * 30 + 5;
+            (bar as HTMLElement).style.height = `${height}px`;
+        });
+    }, 150);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Scroll chat to bottom
+  useEffect(() => {
+    if (feedRef.current) {
+        feedRef.current.scrollTop = feedRef.current.scrollHeight;
+    }
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (inputText.trim() === '') return;
 
     const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      user: user?.name || 'Explorer', 
-      text: inputText,
-      timestamp: Date.now()
+        id: Date.now().toString(),
+        user: user?.name || 'Guest_User',
+        text: inputText,
+        timestamp: Date.now(),
     };
 
     setMessages(prev => [...prev, newMessage]);
     setInputText('');
-    setIsTyping(true);
-    
-    const history = messages.slice(-5).map(m => ({ user: m.user, text: m.text }));
-    
-    setTimeout(async () => {
-      const aiText = await getAIResponse(history, newMessage.text);
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        user: 'Latitude_AI',
-        text: aiText,
-        timestamp: Date.now(),
-        isSystem: true
-      };
-      setMessages(prev => [...prev, aiMessage]);
-      setIsTyping(false);
-    }, 1500); 
-  };
 
-  const handleAddPlaylist = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!playlistInput.trim()) return;
-    if (user?.tier !== UserTier.FAN_CLUB && user?.tier !== UserTier.LABEL_EXEC && user?.tier !== UserTier.DJ_PRO) {
-      alert("AI Playlist access requires a Fan Club membership ($9.99)!");
-      return;
-    }
-    setAiPlaylist(prev => [...prev, playlistInput]);
-    setPlaylistInput('');
+    // Simulate AI response
+    setTimeout(() => {
+        const aiMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            user: 'X-PHASE [AI]',
+            text: 'Signal received. Integrating message into the sonic landscape.',
+            timestamp: Date.now(),
+            isAI: true
+        };
+        setMessages(prev => [...prev, aiMessage]);
+    }, 1000);
   };
+  
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.getHours() + ":" + date.getMinutes().toString().padStart(2, '0');
+  }
 
   return (
-    <div className="h-full flex flex-col md:flex-row gap-6 animate-fade-in pb-4 px-4 md:px-0 bg-white dark:bg-black transition-colors">
-      <div className="w-full md:w-64 flex-shrink-0 space-y-6">
-        <div>
-          <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Frequency Channels</h3>
-          <div className="space-y-2">
-            {ROOMS.map(room => (
-              <button
-                key={room}
-                onClick={() => setActiveRoom(room)}
-                className={`w-full text-left px-5 py-4 border text-[11px] font-black uppercase tracking-[0.2em] transition-all rounded-xl ${
-                  activeRoom === room
-                  ? 'border-latitude-red bg-latitude-red/10 text-latitude-red shadow-lg'
-                  : 'border-black/5 dark:border-white/5 text-gray-500 hover:text-black dark:hover:text-white bg-black/5 dark:bg-white/5'
-                }`}
-              >
-                # {room}
-              </button>
-            ))}
-          </div>
-        </div>
-        
-        <div className="p-6 bg-black/5 dark:bg-[#0c0c0c] border border-black/10 dark:border-white/10 rounded-3xl relative overflow-hidden group shadow-xl">
-           <h4 className="text-[9px] font-black text-latitude-red mb-3 uppercase tracking-widest flex items-center gap-2 italic">
-              AI Playlist Core
-           </h4>
-           <div className="space-y-3 mb-6">
-              {aiPlaylist.map((track, i) => (
-                <div key={i} className="text-[10px] text-black dark:text-gray-300 font-mono tracking-tighter truncate border-l-2 border-latitude-red pl-2">
-                  {track}
-                </div>
-              ))}
-           </div>
-           <form onSubmit={handleAddPlaylist} className="space-y-2">
-              <input 
-                type="text" 
-                value={playlistInput}
-                onChange={e => setPlaylistInput(e.target.value)}
-                placeholder="Queue track..."
-                className="w-full bg-white dark:bg-black border border-black/10 dark:border-white/10 p-3 text-[9px] rounded-lg outline-none text-black dark:text-white"
-              />
-              <button className="w-full py-2 bg-black dark:bg-white text-white dark:text-black text-[8px] font-black uppercase rounded-lg shadow-lg">Inject Frequency</button>
-           </form>
-           {user?.tier !== UserTier.FAN_CLUB && (
-             <p className="mt-4 text-[7px] text-gray-500 uppercase text-center font-bold tracking-widest">Locked: Join Fan Club</p>
-           )}
-        </div>
-      </div>
+    <>
+      <style>{`
+        :root {
+            --obsidian: #050505;
+            --blood-red: #ff0022;
+            --deep-maroon: #4d000a;
+            --glass-shine: rgba(255, 255, 255, 0.05);
+            --serrated-edge: polygon(0% 0%, 95% 0%, 100% 5%, 100% 100%, 5% 100%, 0% 95%);
+            --font-main: 'Inter', sans-serif;
+            --font-data: 'JetBrains Mono', monospace;
+        }
 
-      <div className="flex-1 flex flex-col border border-black/10 dark:border-white/10 bg-black/5 dark:bg-[#080808] rounded-[40px] overflow-hidden shadow-2xl relative h-[700px] md:h-auto">
-        <div className="p-6 border-b border-black/5 dark:border-white/5 bg-white/60 dark:bg-black/60 backdrop-blur-xl">
-           <div className="flex flex-col">
-              <h2 className="font-black text-xl text-black dark:text-white uppercase italic tracking-tighter">#{activeRoom}</h2>
-              <p className="text-[9px] text-gray-600 uppercase tracking-widest font-black">Sync Frequency: Live</p>
-           </div>
-        </div>
+        .social-lounge-body {
+            background-color: var(--obsidian);
+            color: #fff;
+            font-family: var(--font-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
 
-        <div className="flex-1 overflow-y-auto p-8 space-y-6 no-scrollbar">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex flex-col ${msg.user === user?.name || msg.user === 'You' ? 'items-end' : 'items-start'}`}>
-               <div className="flex items-center gap-2 mb-2">
-                 <span className={`text-[10px] font-black uppercase tracking-widest ${msg.isSystem ? 'text-latitude-red' : 'text-gray-500'}`}>
-                   {msg.user}
-                 </span>
-               </div>
-               <div className={`max-w-[75%] p-4 text-sm border shadow-xl rounded-2xl transition-all ${
-                 msg.user === user?.name || msg.user === 'You' 
-                 ? 'border-latitude-red/20 bg-latitude-red text-white' 
-                 : msg.isSystem
-                   ? 'border-latitude-red/10 bg-latitude-red/5 text-latitude-red italic'
-                   : 'border-black/5 dark:border-white/5 bg-white dark:bg-black/40 text-black dark:text-gray-300'
-               }`}>
-                 {msg.text}
-               </div>
+        .social-lounge-body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 2px, 3px 100%;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .social-lounge-header {
+            height: 80px;
+            border-bottom: 1px solid var(--deep-maroon);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            background: rgba(5, 5, 5, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-weight: 900;
+            font-size: 1.5rem;
+            letter-spacing: -1px;
+            text-transform: uppercase;
+            color: var(--blood-red);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 20px;
+            height: 20px;
+            background: var(--blood-red);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        .lounge-stats {
+            font-family: var(--font-data);
+            font-size: 0.7rem;
+            color: var(--blood-red);
+            text-transform: uppercase;
+        }
+
+        .social-lounge-main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            overflow: hidden;
+        }
+
+        .stage {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1a0003 0%, #050505 70%);
+            overflow: hidden;
+        }
+
+        .visualizer-ring {
+            position: absolute;
+            width: 450px;
+            height: 450px;
+            border: 2px solid var(--blood-red);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: rotate 20s linear infinite;
+        }
+
+        .visualizer-ring::after {
+            content: "";
+            position: absolute;
+            top: -10px; left: -10px; right: -10px; bottom: -10px;
+            border: 1px dashed var(--blood-red);
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+
+        .dj-core {
+            width: 280px;
+            height: 280px;
+            background: var(--obsidian);
+            border: 4px solid var(--blood-red);
+            clip-path: polygon(50% 0%, 90% 20%, 100% 60%, 75% 100%, 25% 100%, 0% 60%, 10% 20%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 0 50px rgba(255, 0, 34, 0.2);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .dj-core:hover {
+            transform: scale(1.05);
+        }
+
+        .dj-status {
+            font-family: var(--font-data);
+            font-size: 0.6rem;
+            color: var(--blood-red);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .dj-name {
+            font-weight: 900;
+            font-size: 2rem;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 10px var(--blood-red);
+        }
+
+        .audio-bars {
+            display: flex;
+            gap: 4px;
+            height: 40px;
+            align-items: flex-end;
+            margin-top: 20px;
+        }
+
+        .bar {
+            width: 3px;
+            background: var(--blood-red);
+            animation: resonance 1s ease-in-out infinite alternate;
+        }
+
+        .chat-panel {
+            background: rgba(10, 10, 10, 0.95);
+            border-left: 1px solid var(--deep-maroon);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 20px;
+            font-family: var(--font-data);
+            font-size: 0.8rem;
+            border-bottom: 1px solid rgba(255, 0, 34, 0.1);
+            color: var(--blood-red);
+            display: flex;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .chat-feed {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            background: rgba(20, 20, 20, 0.8);
+            padding: 15px;
+            border-left: 2px solid var(--blood-red);
+            clip-path: var(--serrated-edge);
+            position: relative;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        .message.ai {
+            background: linear-gradient(135deg, var(--deep-maroon) 0%, var(--obsidian) 100%);
+            border-left-color: #fff;
+        }
+
+        .msg-meta {
+            font-family: var(--font-data);
+            font-size: 0.6rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .msg-text {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: #ddd;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            background: var(--obsidian);
+            border-top: 1px solid var(--deep-maroon);
+        }
+
+        .input-wrapper {
+            position: relative;
+            background: #111;
+            padding: 2px;
+            clip-path: var(--serrated-edge);
+        }
+
+        .social-lounge-body input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 15px;
+            color: #fff;
+            font-family: var(--font-data);
+            outline: none;
+        }
+
+        .track-info {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            max-width: 300px;
+        }
+
+        .track-label {
+            font-family: var(--font-data);
+            font-size: 0.6rem;
+            color: var(--blood-red);
+            text-transform: uppercase;
+        }
+
+        .track-name {
+            font-size: 1.2rem;
+            font-weight: 900;
+            margin-top: 5px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes resonance {
+            0% { height: 5px; }
+            100% { height: 35px; }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .chat-feed::-webkit-scrollbar { width: 4px; }
+        .chat-feed::-webkit-scrollbar-track { background: var(--obsidian); }
+        .chat-feed::-webkit-scrollbar-thumb { background: var(--deep-maroon); }
+
+        .serrated-btn {
+            background: var(--blood-red);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-family: var(--font-data);
+            font-weight: 700;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .serrated-btn:hover {
+            transform: skewX(-10deg);
+            background: #fff;
+            color: var(--obsidian);
+        }
+      `}</style>
+      <div className="social-lounge-body">
+        <header className="social-lounge-header">
+            <div className="logo">
+                <div className="logo-icon"></div>
+                <span>Resonance</span>
             </div>
-          ))}
-          <div ref={chatEndRef}></div>
-        </div>
+            <div className="lounge-stats">
+                Status: Optimal // Listeners: 1,402 // Bitrate: 320kbps
+            </div>
+            <button className="serrated-btn" onClick={() => setView(ViewState.HOME)}>LEAVE_LOUNGE</button>
+        </header>
 
-        <form onSubmit={handleSendMessage} className="p-6 bg-white/60 dark:bg-black/60 backdrop-blur-xl border-t border-black/10 dark:border-white/10 flex gap-4">
-           <input 
-             type="text" 
-             value={inputText}
-             onChange={(e) => setInputText(e.target.value)}
-             className="flex-1 bg-white dark:bg-black border border-black/10 dark:border-white/10 p-5 text-black dark:text-white font-mono text-xs focus:outline-none focus:border-latitude-red transition-all rounded-2xl placeholder:text-gray-400"
-             placeholder="Message lounge..."
-           />
-           <button type="submit" className="px-10 bg-latitude-red text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl border-b-4 border-red-950">
-             Send
-           </button>
-        </form>
+        <main className="social-lounge-main">
+            <section className="stage">
+                <div className="visualizer-ring"></div>
+                <div className="dj-core">
+                    <div className="dj-status">AI SYNTHETIC DJ</div>
+                    <div className="dj-name">X-PHASE</div>
+                    <div className="audio-bars">
+                        <div className="bar" style={{animationDelay: '0.1s'}}></div>
+                        <div className="bar" style={{animationDelay: '0.3s'}}></div>
+                        <div className="bar" style={{animationDelay: '0.2s'}}></div>
+                        <div className="bar" style={{animationDelay: '0.5s'}}></div>
+                        <div className="bar" style={{animationDelay: '0.4s'}}></div>
+                        <div className="bar" style={{animationDelay: '0.6s'}}></div>
+                        <div className="bar" style={{animationDelay: '0.2s'}}></div>
+                    </div>
+                </div>
+
+                <div className="track-info">
+                    <div className="track-label">Now Generating</div>
+                    <div className="track-name">Obsidian Pulse - Kinetic Mix</div>
+                </div>
+            </section>
+
+            <section className="chat-panel">
+                <div className="chat-header">
+                    <span>LIVE_FEED</span>
+                    <span>ENC_v2.4</span>
+                </div>
+                
+                <div className="chat-feed" ref={feedRef}>
+                    {messages.map(msg => (
+                        <div key={msg.id} className={`message ${msg.isAI ? 'ai' : ''}`}>
+                            <div className="msg-meta">
+                                <span>{msg.user}</span>
+                                <span>{formatTime(msg.timestamp)}</span>
+                            </div>
+                            <div className="msg-text">{msg.text}</div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="chat-input-area">
+                    <form className="input-wrapper" onSubmit={handleSendMessage}>
+                        <input 
+                            type="text" 
+                            placeholder="Transmit signal..."
+                            value={inputText}
+                            onChange={e => setInputText(e.target.value)}
+                        />
+                    </form>
+                </div>
+            </section>
+        </main>
       </div>
-    </div>
+    </>
   );
 };
 

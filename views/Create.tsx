@@ -1,125 +1,18 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { UserTier, NFTItem, UserProfile } from '../types';
+import { UserTier, NFTItem, UserProfile, ViewState } from '../types';
 import { assetService } from '../services/assetService';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as THREE from 'three';
 
 interface CreateProps {
   user: UserProfile | null;
   userTier: UserTier;
   onMint: (nft: NFTItem) => void;
   walletConnected: boolean;
+  setView: (view: ViewState) => void;
 }
 
-const CassetteVisualizer: React.FC<{ isPlaying: boolean; speed: number }> = ({ isPlaying, speed }) => {
-  const mountRef = useRef<HTMLDivElement>(null);
-  const frameId = useRef<number | null>(null);
-  const reelsRef = useRef<THREE.Group[]>([]);
-
-  useEffect(() => {
-    if (!mountRef.current) return;
-
-    const width = mountRef.current.clientWidth;
-    const height = mountRef.current.clientHeight;
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.z = 7;
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(width, height);
-    mountRef.current.appendChild(renderer.domElement);
-
-    const shellGeo = new THREE.BoxGeometry(10, 6, 0.6);
-    const shellMat = new THREE.MeshPhongMaterial({ 
-      color: 0x080808, 
-      shininess: 120,
-      specular: 0x444444
-    });
-    const shell = new THREE.Mesh(shellGeo, shellMat);
-    scene.add(shell);
-
-    const windowGeo = new THREE.PlaneGeometry(5, 2.5);
-    const windowMat = new THREE.MeshPhysicalMaterial({ 
-      color: 0xffffff, 
-      transparent: true, 
-      opacity: 0.1, 
-      roughness: 0,
-      transmission: 0.9,
-      side: THREE.DoubleSide
-    });
-    const cassetteWindow = new THREE.Mesh(windowGeo, windowMat);
-    cassetteWindow.position.z = 0.31;
-    scene.add(cassetteWindow);
-
-    const createReel = (x: number) => {
-      const group = new THREE.Group();
-      const reelGeo = new THREE.CylinderGeometry(1, 1, 0.15, 32);
-      const reelMat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
-      const reel = new THREE.Mesh(reelGeo, reelMat);
-      reel.rotation.x = Math.PI / 2;
-      group.add(reel);
-
-      for(let i=0; i<6; i++) {
-        const sprocketGeo = new THREE.BoxGeometry(0.2, 0.3, 0.2);
-        const sprocketMat = new THREE.MeshPhongMaterial({ color: 0x000000 });
-        const sprocket = new THREE.Mesh(sprocketGeo, sprocketMat);
-        const angle = (i / 6) * Math.PI * 2;
-        sprocket.position.set(Math.cos(angle)*0.4, Math.sin(angle)*0.4, 0.1);
-        group.add(sprocket);
-      }
-      group.position.set(x, 0, 0.1);
-      return group;
-    };
-    
-    const reel1 = createReel(-2.5);
-    const reel2 = createReel(2.5);
-    scene.add(reel1, reel2);
-    reelsRef.current = [reel1, reel2];
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    const redLight = new THREE.PointLight(0xff0000, 2, 10);
-    redLight.position.set(-2, 2, 3);
-    scene.add(redLight);
-    const blueLight = new THREE.PointLight(0x0080ff, 2, 10);
-    blueLight.position.set(2, -2, 3);
-    scene.add(blueLight);
-
-    const animate = () => {
-      frameId.current = requestAnimationFrame(animate);
-      
-      // Control rotation based on speed and playing state
-      // Clockwise (negative) for play/forward, Counter-clockwise (positive) for rewind
-      let rotationDelta = 0;
-      if (isPlaying) {
-        rotationDelta = -0.05; // Normal Play Speed
-      } else if (speed !== 0) {
-        rotationDelta = speed * -0.05; // Dynamic FW/RW Speed
-      }
-
-      if (rotationDelta !== 0) {
-        reelsRef.current.forEach(reel => {
-          reel.rotation.z += rotationDelta;
-        });
-      }
-      
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    return () => {
-      if (frameId.current) cancelAnimationFrame(frameId.current);
-      mountRef.current?.removeChild(renderer.domElement);
-    };
-  }, [isPlaying, speed]);
-
-  return <div ref={mountRef} className="w-full h-full" />;
-};
-
-const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected }) => {
+const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected, setView }) => {
   const [loading, setLoading] = useState(false);
   const [fileStatus, setFileStatus] = useState<'empty' | 'loading' | 'ready'>('empty');
   const [loadProgress, setLoadProgress] = useState(0);
@@ -212,7 +105,7 @@ const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected
   const handleRewind = () => {
     if (fileStatus !== 'ready') return;
     setIsPlaying(false);
-    setSpeed(-5); // Fast counter-clockwise
+    setSpeed(-5);
     if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
     setTimeout(() => setSpeed(0), 500);
   };
@@ -220,7 +113,7 @@ const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected
   const handleFastForward = () => {
     if (fileStatus !== 'ready') return;
     setIsPlaying(false);
-    setSpeed(5); // Fast clockwise
+    setSpeed(5);
     if (audioRef.current) audioRef.current.currentTime = Math.min(audioRef.current.duration || 0, audioRef.current.currentTime + 10);
     setTimeout(() => setSpeed(0), 500);
   };
@@ -274,20 +167,21 @@ const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected
   const isHiFi = fileMeta?.type === 'WAV' || fileMeta?.type === 'FLAC' || fileMeta?.type === 'AIFF';
 
   return (
-    <div className="max-w-7xl mx-auto py-12 px-4 space-y-12 animate-fade-in pb-32">
+    <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-12 animate-fade-in pb-32">
       <audio ref={audioRef} onEnded={handleStop} hidden />
       
-      <header className="border-b border-black/10 dark:border-white/10 pb-6 flex justify-between items-end">
+      <header className="border-b border-black/10 dark:border-white/10 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h2 className="text-6xl font-black text-black dark:text-white uppercase tracking-tighter italic">NFT <span className="text-latitude-red">Studio</span></h2>
-          <p className="text-gray-500 text-sm font-bold uppercase tracking-widest mt-2">Sovereign Mastering Protocol</p>
+          <h2 className="text-4xl sm:text-6xl font-black text-black dark:text-white uppercase tracking-tighter italic">NFT <span className="text-latitude-red">Studio</span></h2>
+          <p className="text-gray-500 text-xs sm:text-sm font-bold uppercase tracking-widest mt-2">Sovereign Mastering Protocol</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-start sm:items-end gap-2">
+            <button onClick={() => setView(ViewState.HOME)} className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-latitude-red transition-colors">Back to Home</button>
           <button 
             onClick={() => setVoiceActive(!voiceActive)}
-            className={`flex items-center gap-3 px-6 py-3 rounded-xl border transition-all ${voiceActive ? 'border-latitude-red text-latitude-red bg-latitude-red/10 animate-pulse' : 'border-black/10 text-gray-500 bg-white/40 dark:bg-black/40 hover:border-latitude-red'}`}
+            className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border transition-all ${voiceActive ? 'border-latitude-red text-latitude-red bg-latitude-red/10 animate-pulse' : 'border-black/10 text-gray-500 bg-white/40 dark:bg-black/40 hover:border-latitude-red'}`}
           >
-            <span className="text-[10px] font-black uppercase tracking-widest">{voiceActive ? 'Voice Engine Engaged' : 'Initialize Voice Commands'}</span>
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">{voiceActive ? 'Voice Engine Engaged' : 'Initialize Voice Commands'}</span>
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
           </button>
           {voiceActive && lastVoiceCommand && (
@@ -349,11 +243,10 @@ const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected
              </div>
           </div>
 
-          <div className="bg-[#111] border-4 border-gray-800 rounded-xl h-[450px] relative overflow-hidden flex flex-col items-center p-8 shadow-inner shadow-black">
+          <div className="bg-[#111] border-4 border-gray-800 rounded-xl h-auto sm:h-[450px] relative overflow-hidden flex flex-col items-center p-4 sm:p-8 shadow-inner shadow-black">
              <div className="absolute top-4 left-6 text-[9px] font-black text-gray-700 uppercase tracking-[0.5em]">Latitude Transport Engine</div>
              
-             <div className="flex-1 w-full cassette-glow relative">
-                <CassetteVisualizer isPlaying={isPlaying} speed={speed} />
+             <div className="flex-1 w-full cassette-glow relative min-h-[150px] sm:min-h-0">
                 {fileStatus === 'empty' && (
                   <div className="absolute inset-0 flex items-center justify-center z-10">
                      <span className="px-8 py-3 bg-black/60 border border-white/10 text-white/20 text-xs font-black uppercase tracking-[0.6em] backdrop-blur-sm">AWAITING_SIGNAL</span>
@@ -361,7 +254,7 @@ const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected
                 )}
              </div>
 
-             <div className="flex items-end gap-2 bg-[#181818] p-6 rounded-t-3xl border-x-2 border-t-2 border-white/5 w-full max-w-xl shadow-2xl relative">
+             <div className="flex items-end gap-2 bg-[#181818] p-4 sm:p-6 rounded-t-3xl border-x-2 border-t-2 border-white/5 w-full max-w-xl shadow-2xl relative mt-4">
                 <div className="flex-1 grid grid-cols-4 gap-2">
                    {[
                      { label: 'RW', action: handleRewind, icon: '⏪' },
@@ -388,16 +281,16 @@ const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected
         </div>
 
         <div className="lg:col-span-4 space-y-8">
-           <div className="bg-white dark:bg-[#111] p-10 rounded-xl border border-black/5 dark:border-white/5 space-y-10 shadow-xl sticky top-8">
+           <div className="bg-white dark:bg-[#111] p-6 sm:p-10 rounded-xl border border-black/5 dark:border-white/5 space-y-8 sm:space-y-10 shadow-xl sticky top-8">
               <div className="border-b border-black/10 dark:border-white/10 pb-6">
                  <h3 className="text-3xl font-black text-black dark:text-white uppercase tracking-tighter italic leading-none">Deploy <span className="text-latitude-red">Data</span></h3>
               </div>
               
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                  <div>
                    <label className="block text-[10px] font-black text-gray-500 mb-3 uppercase tracking-widest">Signal Designation</label>
                    <input 
-                     className="w-full bg-gray-50 dark:bg-black border border-black/10 dark:border-white/10 p-5 rounded-sm text-black dark:text-white focus:border-latitude-red focus:outline-none transition-all font-mono text-sm"
+                     className="w-full bg-gray-50 dark:bg-black border border-black/10 dark:border-white/10 p-4 sm:p-5 rounded-sm text-black dark:text-white focus:border-latitude-red focus:outline-none transition-all font-mono text-sm"
                      value={formData.title}
                      onChange={e => setFormData({...formData, title: e.target.value})}
                      placeholder="SIGNAL_UID"
@@ -407,7 +300,7 @@ const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected
                  <div>
                    <label className="block text-[10px] font-black text-gray-500 mb-3 uppercase tracking-widest">Metadata</label>
                    <textarea 
-                     className="w-full bg-gray-50 dark:bg-black border border-black/10 dark:border-white/10 p-5 rounded-sm text-black dark:text-white focus:border-latitude-red focus:outline-none transition-all text-sm h-48 font-mono"
+                     className="w-full bg-gray-50 dark:bg-black border border-black/10 dark:border-white/10 p-4 sm:p-5 rounded-sm text-black dark:text-white focus:border-latitude-red focus:outline-none transition-all text-sm h-36 sm:h-48 font-mono"
                      value={formData.description}
                      onChange={e => setFormData({...formData, description: e.target.value})}
                      placeholder="Signal footprint..."
@@ -417,7 +310,7 @@ const Create: React.FC<CreateProps> = ({ user, userTier, onMint, walletConnected
                  <button 
                    onClick={handleDeploy}
                    disabled={loading || fileStatus !== 'ready'}
-                   className="w-full py-7 bg-latitude-red text-white font-black uppercase tracking-[0.5em] rounded-sm shadow-2xl hover:bg-black transition-all disabled:opacity-30 border-b-4 border-red-950 text-xs"
+                   className="w-full py-6 sm:py-7 bg-latitude-red text-white font-black uppercase tracking-[0.5em] rounded-sm shadow-2xl hover:bg-black transition-all disabled:opacity-30 border-b-4 border-red-950 text-xs"
                  >
                    {loading ? 'DEPLOYING...' : 'COMMIT TO NETWORK'}
                  </button>

@@ -1,194 +1,219 @@
-
-import React, { useState, useEffect } from 'react';
-import { NFTItem, UserProfile, ViewState } from '../types';
+import React, { useEffect, useState } from 'react';
+import { NFT, ViewState } from '../types';
 
 interface MarketplaceProps {
-  items: NFTItem[];
-  user: UserProfile | null;
-  onBuy: (id: string) => void;
   setView: (view: ViewState) => void;
 }
 
-const SovereignGallery: React.FC<{ items: NFTItem[] }> = ({ items }) => {
-  const featured = items.slice(0, 3);
-  const [activeIndex, setActiveIndex] = useState(0);
+const Marketplace: React.FC<MarketplaceProps> = ({ setView }) => {
+  const [archiveItems, setArchiveItems] = useState<any[]>([]);
+  const [regularItems, setRegularItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [floorPrice, setFloorPrice] = useState(0);
+  const [totalValue, setTotalValue] = useState(0);
 
+  const GATEWAY_URL = "https://tomato-elderly-lungfish-379.mypinata.cloud/ipfs/";
+  const DATA_CID = "QmQd2yB5Tqr4T2pB1kP6s3jxJdFp1q1b1q1b1q1b1q1b1/CLOUDSHIP";
+
+  // Light Leak & Niche Hover Logic
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveIndex(prev => (prev + 1) % featured.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [featured.length]);
+    const lightLeak = document.getElementById('light-leak');
+    if (!lightLeak) return;
 
-  if (featured.length === 0) return null;
+    const handleMouseMove = (e: MouseEvent) => {
+        lightLeak.style.left = e.clientX + 'px';
+        lightLeak.style.top = e.clientY + 'px';
+    };
 
-  return (
-    <section className="mb-24 animate-fade-in pt-8">
-      <div className="flex items-center gap-6 mb-12 px-4 md:px-0">
-        <h2 className="text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter leading-none">Sovereign <span className="text-latitude-red">Gallery</span></h2>
-        <div className="h-0.5 flex-1 bg-gradient-to-r from-latitude-red to-transparent opacity-20"></div>
-        <span className="hidden md:block text-[10px] font-black uppercase text-gray-500 tracking-[0.5em]">Network Apex Signals</span>
-      </div>
+    document.addEventListener('mousemove', handleMouseMove);
 
-      <div className="relative h-[600px] md:h-[500px] w-full bg-[#080808] border border-white/5 rounded-[50px] overflow-hidden group shadow-2xl">
-         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,0,0,0.1)_0%,_transparent_70%)]"></div>
-         
-         {featured.map((item, i) => (
-           <div 
-             key={item.id} 
-             className={`absolute inset-0 transition-all duration-1000 flex flex-col md:flex-row items-center p-8 md:p-16 gap-10 md:gap-20 ${i === activeIndex ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-40 pointer-events-none'}`}
-           >
-              <div className="w-full md:w-1/2 aspect-square relative z-10">
-                 <div className="absolute -inset-6 bg-latitude-red/20 blur-[80px] rounded-full opacity-40 animate-pulse"></div>
-                 <img src={item.imageUrl} className="w-full h-full object-cover rounded-[40px] shadow-[0_30px_60px_rgba(0,0,0,0.5)] relative border border-white/10" />
-                 <div className="absolute -bottom-6 -right-6 bg-latitude-red text-white p-6 rounded-3xl shadow-2xl font-black italic text-3xl">#00{i+1}</div>
-              </div>
+    const niches = document.querySelectorAll('.niche');
+    niches.forEach(niche => {
+        niche.addEventListener('mouseenter', () => {
+            lightLeak.style.width = '600px';
+            lightLeak.style.height = '600px';
+            lightLeak.style.background = 'radial-gradient(circle, rgba(230, 0, 0, 0.1) 0%, transparent 70%)';
+        });
+        niche.addEventListener('mouseleave', () => {
+            lightLeak.style.width = '400px';
+            lightLeak.style.height = '400px';
+            lightLeak.style.background = 'radial-gradient(circle, rgba(230, 0, 0, 0.05) 0%, transparent 70%)';
+        });
+    });
 
-              <div className="w-full md:w-1/2 space-y-8 relative z-10 text-center md:text-left">
-                 <div className="space-y-4">
-                    <p className="text-latitude-teal font-mono text-[10px] uppercase tracking-[0.6em]">Premium Metadata Hub</p>
-                    <h3 className="text-5xl md:text-8xl font-black text-white uppercase italic tracking-tighter leading-none truncate">{item.title}</h3>
-                    <p className="text-2xl text-gray-400 font-cursive lowercase">curated by {item.artist}</p>
-                 </div>
-                 
-                 <p className="text-gray-500 text-sm max-w-md leading-relaxed font-mono uppercase tracking-widest text-xs">"{item.description}"</p>
-                 
-                 <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start pt-4">
-                    <div className="bg-black border border-white/10 px-8 py-4 rounded-3xl flex flex-col items-center md:items-start shadow-inner">
-                       <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-1">Apex Bid</span>
-                       <span className="text-3xl font-mono text-latitude-solana leading-none">{item.price} SOL</span>
-                    </div>
-                    <button className="px-12 py-5 bg-latitude-red text-white font-black uppercase tracking-[0.4em] rounded-3xl shadow-[0_20px_40px_rgba(255,0,0,0.2)] hover:scale-105 active:scale-95 transition-all text-xs">Collect Signal</button>
-                 </div>
-              </div>
-           </div>
-         ))}
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+    }
+  }, [loading]);
 
-         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 z-20">
-            {featured.map((_, i) => (
-              <button 
-                key={i} 
-                onClick={() => setActiveIndex(i)}
-                className={`h-1.5 rounded-full transition-all duration-500 ${i === activeIndex ? 'w-16 bg-latitude-red shadow-[0_0_10px_#ff0000]' : 'w-4 bg-white/10 hover:bg-white/30'}`}
-              />
-            ))}
-         </div>
-      </div>
-    </section>
-  );
-};
-
-const Marketplace: React.FC<MarketplaceProps> = ({ items, user, onBuy, setView }) => {
-  const [filter, setFilter] = useState<'all' | 'music' | 'video' | 'art'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'newest' | 'price_asc' | 'price_desc'>('newest');
-
-  const filtered = items.filter(n => {
-    const matchesType = filter === 'all' || n.type === filter;
-    const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          n.artist.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesType && matchesSearch;
-  }).sort((a, b) => {
-    if (sortBy === 'price_asc') return a.price - b.price;
-    if (sortBy === 'price_desc') return b.price - a.price;
-    return (b.createdAt || 0) - (a.createdAt || 0);
-  });
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-12 animate-fade-in pb-32">
-      <SovereignGallery items={items} />
-
-      <header className="flex flex-col space-y-10 border-b border-white/10 pb-16">
-        <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-8 text-center md:text-left">
-          <div className="space-y-2">
-            <h2 className="text-7xl font-black text-white uppercase italic tracking-tighter">Market<span className="text-latitude-red">Place</span></h2>
-            <p className="text-gray-500 font-mono text-sm uppercase tracking-[0.4em]">Decentralized Creative Exchange Protocol</p>
-          </div>
-          <button onClick={() => setView(ViewState.CREATE)} className="px-12 py-6 bg-latitude-red text-white font-black uppercase tracking-[0.5em] rounded-3xl shadow-2xl hover:scale-105 active:scale-95 transition-all text-[11px] border-b-4 border-red-900">
-             + Deploy High-Fidelity Signal
-          </button>
-        </div>
+  // Pinata Data Fetch
+  useEffect(() => {
+    const fetchNfts = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(GATEWAY_URL + DATA_CID);
+        const data = await response.json();
         
-        <div className="flex flex-col lg:flex-row gap-6 justify-between bg-vst/40 p-8 border border-white/5 rounded-[40px] backdrop-blur-md shadow-inner">
-           <div className="flex-1 relative">
-             <input 
-               type="text" 
-               placeholder="Search artists, frequencies, or collections..." 
-               value={searchQuery}
-               onChange={(e) => setSearchQuery(e.target.value)}
-               className="w-full pl-16 pr-6 py-5 bg-black border border-white/10 rounded-2xl focus:border-latitude-red focus:outline-none text-white transition-all font-mono text-sm placeholder:text-gray-800"
-             />
-             <svg className="w-6 h-6 text-gray-800 absolute left-6 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-           </div>
+        const allItems = Array.isArray(data) ? data : [data];
 
-           <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex p-1.5 bg-black rounded-2xl border border-white/5">
-                {['all', 'music', 'video', 'art'].map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f as any)}
-                    className={`px-8 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${
-                      filter === f ? 'bg-latitude-red text-white shadow-lg shadow-red-500/20' : 'text-gray-700 hover:text-white'
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
+        // Archive = Cloudship/Gold tier items. Regular = the rest.
+        const archive = allItems.filter(item => item.price > 2 || item.isArchive || item.name.includes("CLOUDSHIP"));
+        const regular = allItems.filter(item => !archive.includes(item));
+        
+        const prices = allItems.map(i => i.price).filter(p => p > 0);
 
-              <select 
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-8 py-3 bg-black border border-white/10 rounded-2xl text-gray-500 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-latitude-red cursor-pointer"
-              >
-                <option value="newest">Latest Drop</option>
-                <option value="price_asc">SOL: Low to High</option>
-                <option value="price_desc">SOL: High to Low</option>
-              </select>
-           </div>
-        </div>
-      </header>
+        setArchiveItems(archive);
+        setRegularItems(regular);
+        if (prices.length > 0) {
+          setFloorPrice(Math.min(...prices));
+          setTotalValue(prices.reduce((a, b) => a + b, 0));
+        }
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-        {filtered.map((nft) => {
-          const isOwned = user && (nft.ownerId === user.id);
-          return (
-            <div key={nft.id} className="group flex flex-col animate-slide-up">
-              <div className="aspect-square bg-vst border border-white/5 p-2.5 rounded-[50px] overflow-hidden transition-all group-hover:border-latitude-red group-hover:shadow-[0_0_50px_rgba(255,0,0,0.3)] mb-8">
-                <div className="w-full h-full rounded-[40px] overflow-hidden relative">
-                  <img src={nft.imageUrl} alt={nft.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div className="absolute top-6 right-6 bg-black/80 backdrop-blur-xl px-4 py-2 text-[10px] font-black text-white rounded-2xl border border-white/10 uppercase tracking-[0.2em]">{nft.type}</div>
-                </div>
-              </div>
-              
-              <div className="px-6 space-y-5 flex-1 flex flex-col">
-                <div className="flex justify-between items-start gap-4">
-                  <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter truncate group-hover:text-latitude-red transition-colors leading-none">{nft.title}</h3>
-                  <span className="text-latitude-solana font-mono text-xl font-bold leading-none">{nft.price} SOL</span>
-                </div>
-                <div className="flex items-center gap-3 border-b border-white/5 pb-5">
-                  <div className="w-8 h-8 rounded-full bg-latitude-blue/20 flex items-center justify-center text-xs">👤</div>
-                  <p className="text-[11px] text-gray-600 font-mono tracking-widest uppercase truncate">{nft.artist}</p>
-                </div>
-                <div className="mt-auto flex gap-4">
-                  <button 
-                    onClick={() => !isOwned && onBuy(nft.id)}
-                    className={`flex-1 py-5 text-[10px] font-black uppercase tracking-[0.4em] rounded-2xl transition-all border-b-4 ${
-                      isOwned ? 'bg-white/5 text-gray-800 border-white/10 cursor-not-allowed' : 'bg-white text-black border-black/20 hover:bg-latitude-red hover:text-white shadow-xl'
-                    }`}
-                  >
-                    {isOwned ? 'SIGNAL_IN_VAULT' : 'COLLECT_SIGNAL'}
-                  </button>
-                  <button className="w-16 h-16 border border-white/10 rounded-2xl flex items-center justify-center text-gray-700 hover:text-white transition-all group-hover:border-white/20 active:scale-95 shadow-inner">
-                     <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.66 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
-                  </button>
-                </div>
-              </div>
+      } catch (error) {
+        console.error('Globi could not reach the data stream:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNfts();
+  }, []);
+
+  return (
+    <>
+    <title>TCE // Marketplace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    
+    <style>{`
+        :root {
+            --basalt-deep: #050505;
+            --basalt-surface: #0f0f0f;
+            --crimson: #e60000;
+            --blood-red: #8b0000;
+            --text-main: #ffffff;
+            --text-dim: #666666;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: crosshair; }
+
+        body {
+            background-color: var(--basalt-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 80px 40px; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 80px; border-bottom: 1px solid rgba(230, 0, 0, 0.2);
+            padding-bottom: 20px;
+        }
+
+        .logo { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--crimson); letter-spacing: 0.2em; text-transform: uppercase; }
+
+        .red-glitch { color: var(--crimson); text-shadow: 2px 0px 10px rgba(230, 0, 0, 0.5); }
+
+        /* Niches */
+        .niche-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; margin-top: 60px; }
+        .niche { position: relative; background: var(--basalt-surface); padding: 40px; transition: all 0.6s ease; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05); }
+        .niche:hover { transform: translateY(-10px); border-color: var(--crimson); }
+        .niche-cloudship { grid-column: span 7; height: 500px; }
+        .niche-gold { grid-column: span 5; height: 500px; }
+
+        .niche-title { font-size: 42px; font-weight: 900; text-transform: uppercase; margin-top: 10px; }
+        .niche-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--crimson); }
+        .spot-counter { position: absolute; top: 40px; right: 40px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+        /* Visual Elements */
+        .visual-cloudship { position: absolute; right: -20px; bottom: 40px; width: 300px; height: 150px; background: #1a1a1a; clip-path: polygon(0% 50%, 20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%); opacity: 0.3; }
+        .visual-gold { position: absolute; right: 40px; bottom: 40px; width: 180px; height: 180px; border: 1px solid rgba(255, 215, 0, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .gold-core { width: 60%; height: 60%; background: radial-gradient(circle, #ffcc00 0%, transparent 70%); opacity: 0.2; }
+
+        /* Regular Grid */
+        .section-divider { margin: 80px 0 40px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px; font-family: 'JetBrains Mono'; font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+        .regular-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+        .nft-card { background: var(--basalt-surface); border: 1px solid rgba(255,255,255,0.03); padding: 15px; transition: 0.3s; }
+        .nft-card:hover { border-color: var(--crimson); }
+        .card-visual { width: 100%; height: 200px; background-size: cover; background-position: center; margin-bottom: 15px; }
+
+        #light-leak { position: fixed; pointer-events: none; z-index: 1; transform: translate(-50%, -50%); border-radius: 50%; transition: width 0.3s, height 0.3s; }
+        .cta-button { margin-top: 30px; padding: 12px 24px; border: 1px solid var(--crimson); color: var(--crimson); font-family: 'JetBrains Mono'; text-transform: uppercase; text-decoration: none; display: inline-block; font-size: 11px; }
+        .cta-button:hover { background: var(--crimson); color: white; }
+    `}</style>
+
+    <div id="light-leak"></div>
+
+    <div className="container">
+        <header>
+            <div className="logo" onClick={() => setView(ViewState.HOME)}> NFT Marketplace</div>
+            <div className="hero-meta">
+                <span>Network: XRP // SOL</span>
+                <span className="red-glitch">GLOBI: MONITORING</span>
             </div>
-          );
-        })}
-      </div>
+        </header>
+
+        <h3>Limited <br/>Edition <br/><span className="red-glitch">Spots.</span></h3>
+
+        {/* TOP NICHES */}
+        <div className="niche-grid">
+            <div className="niche niche-cloudship">
+                <span className="niche-label">COLLECTION // 001</span>
+                <div className="spot-counter">
+                    <span style={{fontSize: '24px'}}>{archiveItems.length}</span>
+                    <br/><span style={{fontSize: '10px', color: 'var(--crimson)'}}>● CLOUDSHIP REMAINING</span>
+                </div>
+                <h2 className="niche-title">CLOUDSHIP <br/>LIMITED</h2>
+                <p style={{color: 'var(--text-dim)', maxWidth: '300px', fontSize: '13px', marginTop: '10px'}}>
+                    Aerodynamic ethereal structures synthesized for high-altitude digital ownership.
+                </p>
+                <a href="#" className="cta-button">Initiate Acquisition</a>
+                <div className="visual-cloudship"></div>
+            </div>
+
+            <div className="niche niche-gold">
+                <span className="niche-label">COLLECTION // 002</span>
+                <div className="spot-counter">
+                    <span style={{fontSize: '24px'}}>5</span>
+                    <br/><span style={{fontSize: '10px', color: 'var(--crimson)'}}>● AUTISTIC GOLD SPOTS</span>
+                </div>
+                <h2 className="niche-title">AUTISTIC <br/>GOLD</h2>
+                <p style={{color: 'var(--text-dim)', maxWidth: '250px', fontSize: '13px', marginTop: '10px'}}>
+                    Pure hyper-focus alchemy.
+                </p>
+                <a href="#" className="cta-button">Access Vault</a>
+                <div className="visual-gold"><div className="gold-core"></div></div>
+            </div>
+        </div>
+
+        {/* REGULAR MARKETPLACE */}
+        <div className="section-divider">Standard Marketplace Feed</div>
+
+        
+
+        <div className="regular-grid">
+            {loading ? <p>Syncing with Pinata...</p> : regularItems.map((nft, i) => (
+                <div key={i} className="nft-card">
+                    <div className="card-visual" style={{backgroundImage: `url(${nft.imageUrl || nft.image})`, opacity: 0.7}}></div>
+                    <span style={{fontFamily: 'JetBrains Mono', color: 'var(--crimson)', fontSize: '10px'}}>#00{i+1}</span>
+                    <h3 style={{fontSize: '14px', margin: '5px 0 15px'}}>{nft.name}</h3>
+                    <div style={{display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #222', paddingTop: '10px'}}>
+                        <span style={{fontFamily: 'JetBrains Mono'}}>{nft.price} SOL</span>
+                        <button style={{background: 'none', border: 'none', color: 'white', fontSize: '10px', textTransform: 'uppercase', cursor: 'pointer'}}>Collect</button>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        <div className="data-stream" style={{marginTop: '60px', display: 'flex', gap: '50px', opacity: 0.5, fontSize: '11px', fontFamily: 'JetBrains Mono'}}>
+            <div>FLOOR: {floorPrice} SOL</div>
+            <div>TOTAL VOLUME: {totalValue.toFixed(2)} SOL</div>
+            <div>STATUS: NOMINAL</div>
+        </div>
     </div>
+    </>
   );
 };
 

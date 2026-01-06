@@ -1,190 +1,240 @@
 
+import { auth, db } from '../firebase';
+import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInAnonymously } from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { UserProfile, UserTier } from '../types';
-import { auth as firebaseAuth, db } from './firebaseConfig';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  updateEmail,
-  GoogleAuthProvider,
-  signInWithPopup,
-  User
-} from "firebase/auth";
-import { ref, set, get, update } from "firebase/database";
 
-const CURRENT_USER_KEY = 'latitude_current_user';
+const MOCK_USERS: { [key: string]: UserProfile } = {
+  'fan@latitude.com': {
+    id: 'fan-user-123',
+    name: 'Alex Fan',
+    handle: 'alexfan',
+    bio: 'Just a dedicated fan of great music.',
+    avatarUrl: 'https://picsum.photos/seed/alexfan/200',
+    bannerUrl: 'https://picsum.photos/seed/alexfan-banner/1500/500',
+    tier: UserTier.FAN_CLUB,
+    walletAddress: 'FjT8...hNpc',
+    socials: { twitter: '@alexfanmusic', instagram: 'alexfanmusic' }
+  },
+  'exec@latitude.com': {
+    id: 'exec-user-456',
+    name: 'Samantha Exec',
+    handle: 'sam_exec',
+    bio: 'Executive at a leading music label.',
+    avatarUrl: 'https://picsum.photos/seed/samexec/200',
+    bannerUrl: 'https://picsum.photos/seed/samexec-banner/1500/500',
+    tier: UserTier.LABEL_EXEC,
+    walletAddress: '9uFe...pQxR',
+    socials: { twitter: '@sam_exec', instagram: 'samantha_exec' },
+    isAdmin: true
+  }
+};
 
-const mapFirebaseUserToProfile = (user: User, isAdmin: boolean = false): UserProfile => ({
-  id: user.uid,
-  name: user.displayName || user.email?.split('@')[0] || 'Explorer',
-  handle: `@${user.uid.substring(0, 6).toLowerCase()}`,
-  email: user.email || '',
-  bio: 'Latitude Citizen.',
-  avatarUrl: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
-  bannerUrl: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=1000',
-  tier: UserTier.FAN_CLUB,
-  isAdmin: isAdmin || user.email === 'cloudshipent@protonmail.com', // Auto-admin for the specific email
-  socials: {}
-});
+class AuthService {
+  private currentUser: UserProfile | null = null;
+  private googleProvider = new GoogleAuthProvider();
 
-export const authService = {
-  login: async (email: string, pass: string): Promise<UserProfile> => {
-    // Super Admin Bypass
-    if (email === 'admin' && pass === '3000') {
-      const admin: UserProfile = {
-        id: 'super_admin',
-        name: 'Latitude Administration',
-        handle: '@admin',
-        email: 'cloudshipent@protonmail.com',
-        bio: 'Root access to the Latitude ecosystem.',
-        avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=admin',
-        bannerUrl: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000',
-        tier: UserTier.LABEL_EXEC,
-        isAdmin: true,
-        socials: { twitter: '@latitude_admin' }
-      };
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(admin));
-      return admin;
+  constructor() {
+    const storedUser = localStorage.getItem('latitude_user');
+    if (storedUser) {
+      this.currentUser = JSON.parse(storedUser);
     }
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, pass);
-      const user = userCredential.user;
-      
-      const userRef = ref(db, 'users/' + user.uid);
-      const snapshot = await get(userRef);
-      let profile: UserProfile;
-
-      if (snapshot.exists()) {
-        profile = snapshot.val() as UserProfile;
+    
+    onAuthStateChanged(auth, (user: User | null) => {
+      if (user) {
+        this.fetchUserProfile(user.uid).then(profile => {
+          this.currentUser = profile;
+          this.broadcastAuthChange(profile);
+        });
       } else {
-        profile = mapFirebaseUserToProfile(user);
-        await set(userRef, profile);
-      }
-
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
-      return profile;
-    } catch (error: any) {
-      throw new Error(error.message || 'Access denied.');
-    }
-  },
-
-  loginWithGoogle: async (): Promise<UserProfile> => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(firebaseAuth, provider);
-      const user = result.user;
-
-      const userRef = ref(db, 'users/' + user.uid);
-      const snapshot = await get(userRef);
-      let profile: UserProfile;
-
-      if (snapshot.exists()) {
-        profile = snapshot.val() as UserProfile;
-      } else {
-        profile = mapFirebaseUserToProfile(user);
-        await set(userRef, profile);
-      }
-
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
-      return profile;
-    } catch (error: any) {
-      throw new Error(error.message || 'Google authentication failed.');
-    }
-  },
-
-  register: async (data: any): Promise<UserProfile> => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(firebaseAuth, data.email, data.password);
-      const user = userCredential.user;
-      
-      const newUser = mapFirebaseUserToProfile(user);
-      newUser.name = data.name || newUser.name;
-      if (data.handle) newUser.handle = data.handle.startsWith('@') ? data.handle : `@${data.handle}`;
-
-      await set(ref(db, 'users/' + user.uid), newUser);
-
-      await sendEmailVerification(user);
-
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
-      return newUser;
-    } catch (error: any) {
-      throw new Error(error.message || 'Registration failed.');
-    }
-  },
-
-  sendResetEmail: async (email: string) => {
-    await sendPasswordResetEmail(firebaseAuth, email);
-  },
-
-  changeEmail: async (newEmail: string) => {
-    const user = firebaseAuth.currentUser;
-    if (user) {
-      await updateEmail(user, newEmail);
-      
-      await update(ref(db, 'users/' + user.uid), { email: newEmail });
-
-      const current = authService.getCurrentUser();
-      if (current) {
-        current.email = newEmail;
-        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(current));
-      }
-    }
-  },
-
-  updateProfile: async (updates: Partial<UserProfile>) => {
-    const user = firebaseAuth.currentUser;
-    if (user) {
-      await update(ref(db, 'users/' + user.uid), updates);
-      
-      const current = authService.getCurrentUser();
-      if (current) {
-        const updated = { ...current, ...updates };
-        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated));
-      }
-    }
-  },
-
-  logout: async () => {
-    await signOut(firebaseAuth);
-    localStorage.removeItem(CURRENT_USER_KEY);
-  },
-
-  getCurrentUser: (): UserProfile | null => {
-    const data = localStorage.getItem(CURRENT_USER_KEY);
-    return data ? JSON.parse(data) : null;
-  },
-
-  subscribeToAuth: (callback: (user: UserProfile | null) => void) => {
-    return onAuthStateChanged(firebaseAuth, async (user) => {
-      if (!user) {
-        const currentData = localStorage.getItem(CURRENT_USER_KEY);
-        if (currentData) {
-          const current = JSON.parse(currentData);
-          if (current.id !== 'super_admin') {
-            localStorage.removeItem(CURRENT_USER_KEY);
-            callback(null);
-          } else {
-            callback(current);
-          }
-        } else {
-          callback(null);
-        }
-      } else {
-        const userRef = ref(db, 'users/' + user.uid);
-        const snapshot = await get(userRef);
-        if (snapshot.exists()) {
-          const profile = snapshot.val() as UserProfile;
-          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
-          callback(profile);
-        } else {
-          const profile = mapFirebaseUserToProfile(user);
-          callback(profile);
-        }
+        this.currentUser = null;
+        this.broadcastAuthChange(null);
       }
     });
   }
-};
+
+  private validatePassword(password: string): boolean {
+    const regex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})$/;
+    return regex.test(password);
+  }
+
+  async login(email: string, password: string): Promise<UserProfile> {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      const userProfile = await this.fetchUserProfile(user.uid);
+      if (!userProfile) {
+        const mockUser = MOCK_USERS[email];
+        if (mockUser) {
+          await this.createUserProfile(user.uid, mockUser);
+          this.currentUser = mockUser;
+          localStorage.setItem('latitude_user', JSON.stringify(mockUser));
+          return mockUser;
+        }
+        throw new Error('User profile not found.');
+      }
+      this.currentUser = userProfile;
+      localStorage.setItem('latitude_user', JSON.stringify(userProfile));
+      return userProfile;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
+  }
+
+  async signup(email: string, password: string, name: string): Promise<UserProfile> {
+     if (!this.validatePassword(password)) {
+      throw new Error(
+        'Password must be at least 8 characters long, contain an uppercase letter, a number, and a special character.'
+      );
+    }
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      const newUserProfile: UserProfile = {
+        id: user.uid,
+        name,
+        handle: email.split('@')[0],
+        email,
+        bio: 'New Latitude user',
+        avatarUrl: `https://picsum.photos/seed/${user.uid}/200`,
+        bannerUrl: `https://picsum.photos/seed/${user.uid}-banner/1500/500`,
+        tier: UserTier.LISTENER,
+        socials: {},
+      };
+      await this.createUserProfile(user.uid, newUserProfile);
+      this.currentUser = newUserProfile;
+      localStorage.setItem('latitude_user', JSON.stringify(newUserProfile));
+      return newUserProfile;
+    } catch (error) {
+      console.error("Signup error:", error);
+      throw error;
+    }
+  }
+  
+  async signInWithGoogle(): Promise<UserProfile> {
+    try {
+      const result = await signInWithPopup(auth, this.googleProvider);
+      const user = result.user;
+
+      let userProfile = await this.fetchUserProfile(user.uid);
+
+      if (!userProfile) {
+        const newUserProfile: UserProfile = {
+          id: user.uid,
+          name: user.displayName || 'Google User',
+          handle: user.email?.split('@')[0] || user.uid,
+          email: user.email || undefined,
+          bio: 'Joined via Google',
+          avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/200`,
+          bannerUrl: `https://picsum.photos/seed/${user.uid}-banner/1500/500`,
+          tier: UserTier.LISTENER,
+          socials: {},
+        };
+        await this.createUserProfile(user.uid, newUserProfile);
+        userProfile = newUserProfile;
+      }
+
+      this.currentUser = userProfile;
+      localStorage.setItem('latitude_user', JSON.stringify(userProfile));
+      return userProfile;
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      throw error;
+    }
+  }
+  
+  async signInAsGuest(): Promise<UserProfile> {
+    try {
+      const userCredential = await signInAnonymously(auth);
+      const user = userCredential.user;
+
+      let userProfile = await this.fetchUserProfile(user.uid);
+
+      if (!userProfile) {
+        const guestProfile: UserProfile = {
+          id: user.uid,
+          name: 'Guest User',
+          handle: `guest_${user.uid.substring(0, 5)}`,
+          bio: 'Exploring Latitude as a guest.',
+          avatarUrl: `https://picsum.photos/seed/guest/200`,
+          bannerUrl: `https://picsum.photos/seed/guest-banner/1500/500`,
+          tier: UserTier.LISTENER,
+          socials: {},
+        };
+        await this.createUserProfile(user.uid, guestProfile);
+        userProfile = guestProfile;
+      }
+
+      this.currentUser = userProfile;
+      localStorage.setItem('latitude_user', JSON.stringify(userProfile));
+      return userProfile;
+    } catch (error) {
+      console.error("Guest sign-in error:", error);
+      throw error;
+    }
+  }
+
+  async logout(): Promise<void> {
+    await signOut(auth);
+    this.currentUser = null;
+    localStorage.removeItem('latitude_user');
+  }
+
+  getCurrentUser(): UserProfile | null {
+    return this.currentUser;
+  }
+
+  async fetchUserProfile(uid: string): Promise<UserProfile | null> {
+    try {
+      const docRef = doc(db, "users", uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return docSnap.data() as UserProfile;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      return null;
+    }
+  }
+
+  async createUserProfile(uid: string, data: Omit<UserProfile, 'id'>): Promise<void> {
+    try {
+      const userRef = doc(db, "users", uid);
+      await setDoc(userRef, { ...data, id: uid });
+    } catch (error) {
+      console.error("Error creating user profile:", error);
+    }
+  }
+
+  async updateProfile(data: Partial<UserProfile>): Promise<void> {
+    if (this.currentUser) {
+      try {
+        const userRef = doc(db, "users", this.currentUser.id);
+        await setDoc(userRef, data, { merge: true });
+        this.currentUser = { ...this.currentUser, ...data };
+        localStorage.setItem('latitude_user', JSON.stringify(this.currentUser));
+        this.broadcastAuthChange(this.currentUser);
+      } catch (error) {
+        console.error("Error updating profile:", error);
+      }
+    }
+  }
+  
+  private subscribers: ((user: UserProfile | null) => void)[] = [];
+
+  subscribeToAuth(callback: (user: UserProfile | null) => void): () => void {
+    this.subscribers.push(callback);
+    callback(this.currentUser);
+    return () => {
+      this.subscribers = this.subscribers.filter(sub => sub !== callback);
+    };
+  }
+
+  private broadcastAuthChange(user: UserProfile | null) {
+    this.subscribers.forEach(sub => sub(user));
+  }
+}
+
+export const authService = new AuthService();
