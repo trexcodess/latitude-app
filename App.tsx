@@ -10,12 +10,13 @@ import AdminPanel from './views/AdminPanel';
 import Backstage from './views/Backstage';
 import UserManagement from './views/UserManagement';
 import Minting from './views/Minting';
+import GoingPlatinum from './views/goingplatinum';
 import AIAssistant from './components/AIAssistant';
 import CommandPalette from './components/CommandPalette';
 import { ViewState, UserProfile, NFTItem, UserTier } from './types';
 import { authService } from './services/authService';
 import Home from './views/Home';
-import Navigation from './components/Navigation';
+import NewNavigation from './components/NewNavigation';
 
 const INITIAL_NFTS: NFTItem[] = [
   {
@@ -90,6 +91,8 @@ const App: React.FC = () => {
         return user?.isAdmin ? <AdminPanel nfts={nfts} setView={setView} /> : <Auth setView={setView} onLogin={handleLogin} />;
       case ViewState.USER_MANAGEMENT:
         return user?.isAdmin ? <UserManagement setView={setView} /> : <Auth setView={setView} onLogin={handleLogin} />;
+      case ViewState.GOING_PLATINUM:
+        return <GoingPlatinum />;
       default:
         return <div className="text-center p-20 font-mono italic">SIGNAL_LOST</div>;
     }
@@ -97,7 +100,7 @@ const App: React.FC = () => {
 
   return (
     <div className="app-shell">
-      <Navigation setView={setView} isLoggedIn={!!user} />
+      <NewNavigation setView={setView} />
       <div className="main-content">
         {renderContent()}
       </div>

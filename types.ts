@@ -11,7 +11,8 @@ export enum ViewState {
   BACKSTAGE = 'BACKSTAGE',
   ADMIN = 'ADMIN',
   USER_MANAGEMENT = 'USER_MANAGEMENT',
-  MINTING = 'MINTING'
+  MINTING = 'MINTING',
+  GOING_PLATINUM = 'GOING_PLATINUM'
 }
 
 export enum UserTier {
